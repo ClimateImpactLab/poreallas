@@ -35,6 +35,6 @@ from the root of this repository.
 
 This is open-source software made available under the terms of the Apache License 2.0.
 
-This repository is available online at https://github.com/brews/preallas.
+This repository is available online at https://github.com/brews/poreallas.
 
-Please file issues in the project's [issue tracker](https://github.com/brews/preallas/issues).
+Please file issues in the project's [issue tracker](https://github.com/brews/poreallas/issues).
