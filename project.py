@@ -24,8 +24,7 @@ def _():
 @app.cell
 def _():
     TAS_FORECAST_URI = "./data/parsed/s51_tas.zarr/"
-    CLIMTAS_URI = "./data/parsed/climtas.zarr/"
-    ERA5_URI = "./data/era5_annual_tas_1995_2025_regrid.nc"
+    ERA5_URI = "./data/era5_daily_tas_1995_2025_regrid.nc"
     GAMMA_URI = "./data/parsed/gamma.zarr/"
     REGIONS_URI = "./data/parsed/segment_weights.zarr/"
     IMPACT_REGION_POLYGONS = "./data/parsed/impact_region.parquet"
@@ -36,7 +35,6 @@ def _():
     # Beware, it's ~35 GiB.
     # This is the file at ./data/input/raw/data/2_projection/2_econ_vars/SSP3.nc4 within the downloaded data.
     SOCIOECONOMICS_URI = "./data/raw/SSP3.nc4"
-
     return (
         ERA5_URI,
         GAMMA_URI,
@@ -55,8 +53,8 @@ def _(isku, np, units, xr):
         """
         tas = units.convert_units_to(ds["tas"], "degC")
         ## TODO: If the data needs to be annualized... Might need this.
-        # return tas.groupby("time.year").mean("time").to_dataset()
-        return tas.to_dataset()
+        return tas.groupby("time.year").mean("time").to_dataset()
+        # return tas.to_dataset()
 
     def _make_30hbartlett_climtas(ds: xr.Dataset) -> xr.Dataset:
         """
@@ -129,8 +127,6 @@ def _(ERA5_URI, isku, make_climtas, regions, xr):
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
-    # Add missing unit information. TODO: This should really be in cleaning or something.
-    _ds["tas"].attrs["units"] = "K"
     _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
 
     climtas = isku.extract_regions(
@@ -175,42 +171,28 @@ def _(GAMMA_URI, xr):
 
 
 @app.cell
-def _():
-    # climtas = xr.open_zarr(CLIMTAS_URI, chunks={})
-    return
-
-
-@app.cell
 def _(histogram, isku, np, units, xr):
-    def _make_monthly_tas_histogram_across_ensembles(ds: xr.Dataset) -> xr.Dataset:
+    def _make_monthly_tas_histogram(ds: xr.Dataset) -> xr.Dataset:
         _tas = units.convert_units_to(ds["tas"], "degC")
 
         _bins = np.arange(-105, 66)  # Range we get histogram count for. NOTE: in degC!
-        # _tas_annual_histogram = _tas.resample(time="1ME").map(
-        _tas_annual_histogram = _tas.resample(
-            time="1MS"
-        ).map(
-            histogram,
-            bins=[_bins],
-            dim=[
-                "time",
-                "number",
-            ],  # So histograms count across each month ("time"), and 51 ensemble members ("number"). Also saves space.
+        _tas_annual_histogram = (
+            _tas
+                .resample(time="1MS")
+                .map(histogram, bins=[_bins], dim=["time"])
         )
         return _tas_annual_histogram.to_dataset().astype("float32")
 
     make_tas_monthly_histogram = isku.build_extraction_template(
-        pre=_make_monthly_tas_histogram_across_ensembles,
-        post=lambda ds: ds.astype(
-            "float32"
-        ),  # Save space. Don't need float64 precision.
+        pre=_make_monthly_tas_histogram,
+        post=lambda ds: ds.astype("float32"),  # Save space. Don't need float64.
     )
     return (make_tas_monthly_histogram,)
 
 
 @app.cell
 def _(TAS_FORECAST_URI, plt, sns, xr):
-    # DEBUG: THIS CELL IS ALL DIAGNOSTICS.
+    # DEBUG more sanity checks
 
     _ds = xr.open_zarr(TAS_FORECAST_URI, chunks={}).set_coords("valid_time")
 
@@ -218,18 +200,6 @@ def _(TAS_FORECAST_URI, plt, sns, xr):
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
 
-    # _ds = _ds.rename(
-    #     {
-    #         "valid_time": "time",
-    #         "latitude": "lat",
-    #         "longitude": "lon",
-    #     }
-    # )
-    # _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
-
-    # _ds.isel(latitude=100, longitude=100)["tas"].squeeze(drop=True).plot(hue="number", x="forecast_period")
-
-    # _ds["valid_time"]
     with sns.axes_style("whitegrid"):
         _ds.set_coords("valid_time")["tas"].isel(latitude=100, longitude=100).squeeze(
             drop=True
@@ -238,6 +208,7 @@ def _(TAS_FORECAST_URI, plt, sns, xr):
             drop=True
         ).mean(dim="number").plot.line(x="valid_time", color="C1")
         plt.show()
+    return
 
 
 @app.cell
@@ -256,13 +227,70 @@ def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, regions, xr):
         }
     )
     _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
+    _ds = _ds.chunk("auto")
 
-    histogram_tas = isku.extract_regions(
+    histogram_forecast_tas = isku.extract_regions(
         _ds,
         template=make_tas_monthly_histogram,
         regions=regions,
     )
-    return (histogram_tas,)
+    return (histogram_forecast_tas,)
+
+
+@app.cell
+def _():
+    # # # # DEBUG Remove incomplete months.
+    # # # # TODO Maybe should be part of earlier cleanup step.
+
+
+    # # # histogram_forecast_tas.sum(dim="tas_bin")
+    # # # assert (histogram_forecast_tas["time"].dt.days_in_month == histogram_forecast_tas.sum(dim="tas_bin")).all().compute()
+
+    # _ds = xr.open_zarr(TAS_FORECAST_URI, chunks={}).set_coords("valid_time")
+
+    # # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
+    # _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+    # _ds = _ds.sortby("longitude")
+
+    # _ds = _ds.rename(
+    #     {
+    #         "valid_time": "time",
+    #         "latitude": "lat",
+    #         "longitude": "lon",
+    #     }
+    # )
+    # _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
+    # _ds = _ds.chunk("auto")
+
+    # # # number_obs = _ds["time"].resample(time="ME").count()
+    # # # days_in_month = number_obs["time"].dt.days_in_month
+    # # # complete_months = number_obs == days_in_month
+    # # # complete_months["time"]
+    # # # _ds["time"].dt.month (number_obs == days_in_month).sel(time.dt.month = _ds["time"].dt.month)
+
+
+    # # # _ds["time"].dt.days_in_month
+    # # # _ds["time"].dt.month
+
+    # # def _map_fn(x, dt_dim):
+    # #     number_obs = x[dt_dim].count()
+    # #     days_in_month = x[dt_dim].dt.days_in_month
+    # #     complete_months = number_obs == days_in_month
+    # #     if not all(complete_months):
+    # #         return xr.full_like(x, fill_value=np.nan)
+    # #     return x
+
+    # #     # print(x["time"].count())
+    # #     # if (x.notnull()["time"].count() == x["time"].dt.days_in_month).all():
+    # #     #     return x
+    # #     # return None
+
+
+    # # _obs_in_month = _ds.resample(time="ME").map(_map_fn, args=("time",))#.dropna(dim="time")
+    # # _obs_in_month
+
+    # _ds.sel(time=slice("2026-05", "2026-11"))
+    return
 
 
 @app.cell
@@ -426,10 +454,9 @@ def _(isku, np, numba, xr):
 
     def _mortality_effects_model(ds: xr.Dataset) -> xr.Dataset:
         # dot product of betas and t_bins for effect.
-        # Divide by number of esemble members (51) so it's the average forecast effect.
-        # TODO: Should make ensemble_n a variable or something rather than hard-coded.
-        effect = (ds["histogram_tas"] * ds["beta"]).sum(dim="tas_bin") / 51
+        effect = (ds["histogram_tas"] * ds["beta"]).sum(dim="tas_bin")
         return xr.Dataset({"effect": effect.astype("float32")})
+
 
     def _noadapt_beta_from_gamma(ds: xr.Dataset) -> xr.Dataset:
         """
@@ -437,6 +464,8 @@ def _(isku, np, numba, xr):
 
         Returns a copy of `ds` with new "beta" variable.
         """
+        ds = ds.copy()
+
         # Subset all the covariate variables to the baseline year because no adaptation is allowed.
         beta, mmt_idx = _calculate_shifted_baseline_beta(ds)
 
@@ -450,9 +479,15 @@ def _(isku, np, numba, xr):
             idx_min=mmt_idx,
         )
 
+        beta.attrs = {
+            "units": "deaths per 100,000 people",
+            "long_name": "Temperature mortality rate",
+        }
+
         # Returns new dataset with beta added as new variable. Not modifying
         # original ds. Also ensure original data is passed through to projection.
         return ds.assign(beta=beta)
+
 
     mortality_effect_model = isku.build_projection_template(
         pre=_noadapt_beta_from_gamma,
@@ -462,13 +497,21 @@ def _(isku, np, numba, xr):
     return (mortality_effect_model,)
 
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Forecast
+    """)
+    return
+
+
 @app.cell
-def _(climtas, gammas, histogram_tas, loggdppc, xr):
+def _(climtas, gammas, histogram_forecast_tas, loggdppc, xr):
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
-    input_ds = (
+    forecast_input_ds = (
         xr.Dataset(
             {
-                "histogram_tas": histogram_tas["histogram_tas"],
+                "histogram_tas": histogram_forecast_tas["histogram_tas"],
                 "climtas": climtas["climtas"],
                 "loggdppc": loggdppc,
                 "gamma": gammas["gamma_mean"],
@@ -477,57 +520,67 @@ def _(climtas, gammas, histogram_tas, loggdppc, xr):
         .dropna(dim="region")
         .chunk(
             {
-                "region": "auto",  # "auto" is a sensible default, but if memory trouble, set this to 1000, 500, 100.
+                "region": "auto",  # "auto" is a sensible default. 
                 "time": -1,  # This needs to be all in memory, thus -1.
                 "tas_bin": -1,  # This also needs to be all in memory.
                 "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
                 "degree": -1,  # For gammas and polynomial calculations. Should all be in memory.
+                "number": 1,
             },
         )
         .unify_chunks()
     )
 
-    input_ds
-    return (input_ds,)
+    forecast_input_ds
+    return (forecast_input_ds,)
 
 
 @app.cell
-def _(input_ds):
+def _(forecast_input_ds):
     # Quick sanity check
 
-    input_ds["histogram_tas"].sel(region="USA.14.608").plot(y="tas_bin", x="time")
-
+    forecast_input_ds["histogram_tas"].sel(region="USA.14.608").sum(dim="number").plot(y="tas_bin", x="time")
     # You can see there are only a few days in December, as the forecast is run for 215 days.
+    return
 
 
 @app.cell
-def _(input_ds, isku, mortality_effect_model):
-    projected = isku.project(input_ds, model=mortality_effect_model)
+def _(forecast_input_ds, isku, mortality_effect_model):
+    projected_forecast = isku.project(forecast_input_ds, model=mortality_effect_model)
+
+    # Taking the average of the forecast ensemble members.
+    projected_forecast["effect"] = projected_forecast["effect"].mean(dim="number")
 
     # Not required, just for fun.
-    projected["effect"].attrs = {
+    projected_forecast["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality",
     }
 
-    projected = projected.compute()
-    return (projected,)
+    projected_forecast = projected_forecast.compute()
+    return (projected_forecast,)
 
 
 @app.cell
-def _(plt, projected, sns):
+def _(projected_forecast):
+    projected_forecast
+    return
+
+
+@app.cell
+def _(plt, projected_forecast, sns):
     # Quick plot for an arbitrary region for diagnostics.
     with sns.axes_style("whitegrid"):
-        projected["effect"].sel(region="USA.14.608").plot(hue="age_cohort")
+        projected_forecast["effect"].sel(region="USA.14.608").plot(hue="age_cohort")
     plt.gca()
-
     # WARNING: Not sure why we're getting values for December...
     # Ahh, because it's 215 days from the beginning of May this year...
     # TODO: Guard against incomplete months.
+    return
 
 
 @app.cell
-def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected):
+def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected_forecast):
     # Quick map for diagnostics
     # Grab polygons for our regions.
     _polygons = (
@@ -538,7 +591,7 @@ def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected):
     )
     # Join projected effects on region names.
     _polygons = _polygons.merge(
-        projected["effect"].to_dataframe().reset_index(),
+        projected_forecast["effect"].to_dataframe().reset_index(),
         on="region",
     )
 
@@ -553,16 +606,119 @@ def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected):
         figsize=(15, 10),
         cmap="viridis",
         legend_kwds={
-            "label": f"{projected['effect'].attrs['long_name']} [{projected['effect'].attrs['units']}]",
+            "label": f"{projected_forecast['effect'].attrs['long_name']} [{projected_forecast['effect'].attrs['units']}]",
             "orientation": "horizontal",
         },
     )
     ax.set_axis_off()
     plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Hist
+    """)
+    return
 
 
 @app.cell
-def _():
+def _(ERA5_URI, isku, make_tas_monthly_histogram, regions, xr):
+    _ds = xr.open_dataset(ERA5_URI)
+
+    # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
+    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+    _ds = _ds.sortby("longitude")
+    _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
+    _ds = _ds.chunk("auto")
+
+    histogram_hist_tas = isku.extract_regions(
+        _ds,
+        template=make_tas_monthly_histogram,
+        regions=regions,
+    )
+    return (histogram_hist_tas,)
+
+
+@app.cell
+def _(climtas, gammas, histogram_hist_tas, loggdppc, xr):
+    # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
+    hist_input_ds = (
+        xr.Dataset(
+            {
+                "histogram_tas": histogram_hist_tas["histogram_tas"],
+                "climtas": climtas["climtas"],
+                "loggdppc": loggdppc,
+                "gamma": gammas["gamma_mean"],
+            }
+        )
+        .dropna(dim="region")
+        .chunk(
+            {
+                "region": "auto",  # "auto" is a sensible default.
+                "time": -1,  # This needs to be all in memory, thus -1.
+                "tas_bin": -1,  # This also needs to be all in memory.
+                "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
+            },
+        )
+        .unify_chunks()
+    )
+
+    hist_input_ds
+    return (hist_input_ds,)
+
+
+@app.cell
+def _(hist_input_ds):
+    # Quick sanity check for histogram tas over the "historical" period.
+
+    hist_input_ds["histogram_tas"].sel(region="USA.14.608").plot(y="tas_bin", x="time")
+    return
+
+
+@app.cell
+def _(hist_input_ds, isku, mortality_effect_model):
+    projected_hist = isku.project(hist_input_ds, model=mortality_effect_model)
+
+    # Not required, just for fun.
+    projected_hist["effect"].attrs = {
+        "units": "deaths per 100,000 people",
+        "long_name": "Temperature mortality",
+    }
+
+    projected_hist = projected_hist.compute()
+    return (projected_hist,)
+
+
+@app.cell
+def _(plt, projected_hist, sns):
+    # Quick plot for an arbitrary region for diagnostics.
+    with sns.axes_style("whitegrid"):
+        projected_hist["effect"].sel(region="USA.14.608").plot(hue="age_cohort")
+    plt.gca()
+    return
+
+
+@app.cell
+def _(plt, projected_hist, sns):
+    # Monthly mean over most recent 10 year period of hist projection.
+    with sns.axes_style("whitegrid"):
+        projected_hist["effect"].sel(region="USA.14.608", time=slice("2015", "2025")).groupby("time.month").mean().plot(hue="age_cohort")
+    plt.gca()
+    return
+
+
+@app.cell
+def _(plt, projected_forecast, projected_hist, sns):
+    # Monthly mean over most recent 10 year period of hist projection.
+    _target_region = "USA.14.608"
+    _climatology = projected_hist["effect"].sel(region=_target_region, time=slice("2015", "2025")).groupby("time.month").mean()
+    _forecast = projected_forecast["effect"].sel(region=_target_region).groupby("time.month")
+
+    with sns.axes_style("whitegrid"):
+        (_forecast - _climatology).plot(hue="age_cohort")
+    plt.gca()
     return
 
 
@@ -571,7 +727,7 @@ def _(mo):
     mo.md(r"""
     Outstanding:
 
-    [ ] ERA5 baseline?
+    [x] ERA5 baseline?
 
     [ ] Guard against incomplete months.
 
@@ -591,6 +747,12 @@ def _(mo):
 
     [ ] Uniform dollar year.
     """)
+    return
+
+
+@app.cell
+def _():
+    return
 
 
 if __name__ == "__main__":

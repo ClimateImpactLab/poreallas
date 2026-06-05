@@ -58,47 +58,41 @@ clipped_window = (
 )
 # This is ~1 TiB.
 
-# Monthly climatology for the study period. Used to adjust S51 forecasts.
-monthly_climatology = (
-    clipped_window.groupby("time.month")
-    .mean(dim="time")
-    .chunk({"month": "auto", "latitude": -1, "longitude": -1})
-    .rename({"2m_temperature": "tas"})
-    .compute()
-)
-
-# What if we only used a single month?
-# clipped_window.sel(time=clipped_window["time"].dt.month == 6)
-# This gets us to ~93 GiB.
-
-
 annual_tas = (
     clipped_window.groupby("time.year")
     .mean("time")
     .to_dataset()
     .chunk({"year": "auto", "latitude": -1, "longitude": -1})
+    .rename_vars({"2m_temperature": "tas"})
 )
-annual_tas = annual_tas.rename(
-    {"2m_temperature": "tas"}
-).compute()  # For some reason we need to compute here, otherwise this version of xarray fails to write to file.
-# annual_tas.to_netcdf("era5_tas_1995_2025.nc", mode="w")
 
-# If we were to regrid the above ERA5 data...
-# annual_tas = xr.open_dataset("era5_tas_1995_2025.nc")
+
+clipped_window_daily = clipped_window.resample(time="D").mean()
+clipped_window_daily = clipped_window_daily.chunk({"time": "auto", "latitude": -1, "longitude": -1})
 
 # Using the S51 seasonal monthly seasonal hindcast ensemble mean from copernicus as the target grid for our regrid...
 # Selecting so only have coords for latitude and longitude for regridding.
 target = xr.open_dataset("s51_hcm.nc").isel(
     {"forecast_reference_time": 0, "forecastMonth": 0}, drop=True
 )
+regridder = xe.Regridder(clipped_window_daily, target, method="bilinear", periodic=True)
+clipped_window_daily_regrid = regridder(clipped_window_daily)
+
+clipped_window_daily_regrid.name = "tas"
+clipped_window_daily_regrid.attrs |= clipped_window_daily.attrs
+
+# Seems to be an xarray bug? This only runs if we first compute() like this:
+clipped_window_daily_regrid.to_dataset().compute().to_netcdf(
+    "era5_daily_tas_1995_2025_regrid.nc", mode="w"
+)
+
 regridder = xe.Regridder(annual_tas, target, method="bilinear", periodic=True)
 annual_tas_regrid = regridder(annual_tas)
-monthly_climatology_regrid = regridder(monthly_climatology)
+annual_tas_regrid.attrs |= annual_tas.attrs
 
-annual_tas_regrid.to_netcdf("era5_annual_tas_1995_2025_regrid.nc", mode="w")
-monthly_climatology_regrid.to_netcdf(
-    "era5_monthly_tas_climatology_1995_2025_regrid.nc", mode="w"
-)
+
+# Seems to be an xarray bug? This only runs if we first compute() like this:
+annual_tas_regrid.compute().to_netcdf("era5_annual_tas_1995_2025_regrid.nc", mode="w")
 
 cluster.scale(0)
 cluster.shutdown()
