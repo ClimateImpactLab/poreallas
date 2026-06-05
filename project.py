@@ -176,10 +176,8 @@ def _(histogram, isku, np, units, xr):
         _tas = units.convert_units_to(ds["tas"], "degC")
 
         _bins = np.arange(-105, 66)  # Range we get histogram count for. NOTE: in degC!
-        _tas_annual_histogram = (
-            _tas
-                .resample(time="1MS")
-                .map(histogram, bins=[_bins], dim=["time"])
+        _tas_annual_histogram = _tas.resample(time="1MS").map(
+            histogram, bins=[_bins], dim=["time"]
         )
         return _tas_annual_histogram.to_dataset().astype("float32")
 
@@ -242,7 +240,6 @@ def _():
     # # # # DEBUG Remove incomplete months.
     # # # # TODO Maybe should be part of earlier cleanup step.
 
-
     # # # histogram_forecast_tas.sum(dim="tas_bin")
     # # # assert (histogram_forecast_tas["time"].dt.days_in_month == histogram_forecast_tas.sum(dim="tas_bin")).all().compute()
 
@@ -268,7 +265,6 @@ def _():
     # # # complete_months["time"]
     # # # _ds["time"].dt.month (number_obs == days_in_month).sel(time.dt.month = _ds["time"].dt.month)
 
-
     # # # _ds["time"].dt.days_in_month
     # # # _ds["time"].dt.month
 
@@ -284,7 +280,6 @@ def _():
     # #     # if (x.notnull()["time"].count() == x["time"].dt.days_in_month).all():
     # #     #     return x
     # #     # return None
-
 
     # # _obs_in_month = _ds.resample(time="ME").map(_map_fn, args=("time",))#.dropna(dim="time")
     # # _obs_in_month
@@ -457,7 +452,6 @@ def _(isku, np, numba, xr):
         effect = (ds["histogram_tas"] * ds["beta"]).sum(dim="tas_bin")
         return xr.Dataset({"effect": effect.astype("float32")})
 
-
     def _noadapt_beta_from_gamma(ds: xr.Dataset) -> xr.Dataset:
         """
         Calculates mortality impact polynomial model's beta coefficients from gamma coefficients for the no-adaptation scenario.
@@ -487,7 +481,6 @@ def _(isku, np, numba, xr):
         # Returns new dataset with beta added as new variable. Not modifying
         # original ds. Also ensure original data is passed through to projection.
         return ds.assign(beta=beta)
-
 
     mortality_effect_model = isku.build_projection_template(
         pre=_noadapt_beta_from_gamma,
@@ -520,7 +513,7 @@ def _(climtas, gammas, histogram_forecast_tas, loggdppc, xr):
         .dropna(dim="region")
         .chunk(
             {
-                "region": "auto",  # "auto" is a sensible default. 
+                "region": "auto",  # "auto" is a sensible default.
                 "time": -1,  # This needs to be all in memory, thus -1.
                 "tas_bin": -1,  # This also needs to be all in memory.
                 "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
@@ -539,7 +532,9 @@ def _(climtas, gammas, histogram_forecast_tas, loggdppc, xr):
 def _(forecast_input_ds):
     # Quick sanity check
 
-    forecast_input_ds["histogram_tas"].sel(region="USA.14.608").sum(dim="number").plot(y="tas_bin", x="time")
+    forecast_input_ds["histogram_tas"].sel(region="USA.14.608").sum(dim="number").plot(
+        y="tas_bin", x="time"
+    )
     # You can see there are only a few days in December, as the forecast is run for 215 days.
     return
 
@@ -704,7 +699,9 @@ def _(plt, projected_hist, sns):
 def _(plt, projected_hist, sns):
     # Monthly mean over most recent 10 year period of hist projection.
     with sns.axes_style("whitegrid"):
-        projected_hist["effect"].sel(region="USA.14.608", time=slice("2015", "2025")).groupby("time.month").mean().plot(hue="age_cohort")
+        projected_hist["effect"].sel(
+            region="USA.14.608", time=slice("2015", "2025")
+        ).groupby("time.month").mean().plot(hue="age_cohort")
     plt.gca()
     return
 
@@ -713,8 +710,15 @@ def _(plt, projected_hist, sns):
 def _(plt, projected_forecast, projected_hist, sns):
     # Monthly mean over most recent 10 year period of hist projection.
     _target_region = "USA.14.608"
-    _climatology = projected_hist["effect"].sel(region=_target_region, time=slice("2015", "2025")).groupby("time.month").mean()
-    _forecast = projected_forecast["effect"].sel(region=_target_region).groupby("time.month")
+    _climatology = (
+        projected_hist["effect"]
+        .sel(region=_target_region, time=slice("2015", "2025"))
+        .groupby("time.month")
+        .mean()
+    )
+    _forecast = (
+        projected_forecast["effect"].sel(region=_target_region).groupby("time.month")
+    )
 
     with sns.axes_style("whitegrid"):
         (_forecast - _climatology).plot(hue="age_cohort")

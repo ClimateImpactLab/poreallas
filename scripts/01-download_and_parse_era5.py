@@ -68,7 +68,9 @@ annual_tas = (
 
 
 clipped_window_daily = clipped_window.resample(time="D").mean()
-clipped_window_daily = clipped_window_daily.chunk({"time": "auto", "latitude": -1, "longitude": -1})
+clipped_window_daily = clipped_window_daily.chunk(
+    {"time": "auto", "latitude": -1, "longitude": -1}
+)
 
 # Using the S51 seasonal monthly seasonal hindcast ensemble mean from copernicus as the target grid for our regrid...
 # Selecting so only have coords for latitude and longitude for regridding.
