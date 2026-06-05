@@ -26,7 +26,7 @@ Projections can be run in the example projection notebook in `./project.py`. You
 Setup and run the example projection notebook by running
 
 ```shell
-uv run marimo edit projection.py
+uv run marimo edit project.py
 ```
 
 from the root of this repository.
