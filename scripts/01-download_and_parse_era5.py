@@ -58,19 +58,6 @@ clipped_window = (
 )
 # This is ~1 TiB.
 
-# Monthly climatology for the study period. Used to adjust S51 forecasts.
-monthly_climatology = (
-    clipped_window.groupby("time.month")
-    .mean(dim="time")
-    .chunk({"month": "auto", "latitude": -1, "longitude": -1})
-)
-monthly_climatology.name = "tas"
-
-# What if we only used a single month?
-# clipped_window.sel(time=clipped_window["time"].dt.month == 6)
-# This gets us to ~93 GiB.
-
-
 annual_tas = (
     clipped_window.groupby("time.year")
     .mean("time")
@@ -82,6 +69,9 @@ annual_tas = (
 
 clipped_window_daily = clipped_window.resample(time="D").mean()
 clipped_window_daily = clipped_window_daily.chunk({"time": "auto", "latitude": -1, "longitude": -1})
+
+# Using the S51 seasonal monthly seasonal hindcast ensemble mean from copernicus as the target grid for our regrid...
+# Selecting so only have coords for latitude and longitude for regridding.
 target = xr.open_dataset("s51_hcm.nc").isel(
     {"forecast_reference_time": 0, "forecastMonth": 0}, drop=True
 )
@@ -96,24 +86,13 @@ clipped_window_daily_regrid.to_dataset().compute().to_netcdf(
     "era5_daily_tas_1995_2025_regrid.nc", mode="w"
 )
 
-# Using the S51 seasonal monthly seasonal hindcast ensemble mean from copernicus as the target grid for our regrid...
-# Selecting so only have coords for latitude and longitude for regridding.
-target = xr.open_dataset("s51_hcm.nc").isel(
-    {"forecast_reference_time": 0, "forecastMonth": 0}, drop=True
-)
 regridder = xe.Regridder(annual_tas, target, method="bilinear", periodic=True)
 annual_tas_regrid = regridder(annual_tas)
 annual_tas_regrid.attrs |= annual_tas.attrs
 
-monthly_climatology_regrid = regridder(monthly_climatology)
-monthly_climatology_regrid.name = "tas"
-monthly_climatology_regrid.attrs |= monthly_climatology.attrs
 
 # Seems to be an xarray bug? This only runs if we first compute() like this:
 annual_tas_regrid.compute().to_netcdf("era5_annual_tas_1995_2025_regrid.nc", mode="w")
-monthly_climatology_regrid.to_dataset().compute().to_netcdf(
-    "era5_monthly_tas_climatology_1995_2025_regrid.nc", mode="w"
-)
 
 cluster.scale(0)
 cluster.shutdown()
