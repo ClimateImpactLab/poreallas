@@ -14,9 +14,15 @@ import os
 import uuid
 
 import dask
+from dotenv import load_dotenv
 import xarray as xr
 import xesmf as xe
 from dask_gateway import GatewayCluster
+
+load_dotenv()
+
+OUT_ZARR = os.getenv("POREALLAS_TAS_FORECAST_URI")
+
 
 JUPYTER_IMAGE = os.environ.get("JUPYTER_IMAGE")
 UID = str(uuid.uuid4())
@@ -84,17 +90,11 @@ clipped_window_daily_regrid.name = "tas"
 clipped_window_daily_regrid.attrs |= clipped_window_daily.attrs
 
 # Seems to be an xarray bug? This only runs if we first compute() like this:
-clipped_window_daily_regrid.to_dataset().compute().to_netcdf(
-    "era5_daily_tas_1995_2025_regrid.nc", mode="w"
-)
+clipped_window_daily_regrid.to_dataset().chunk(
+    {"time": "auto", "latitude": -1, "longitude": -1}
+).compute().to_zarr(OUT_ZARR, consolidated=False)
+print(f"Output written to {OUT_ZARR}")
 
-regridder = xe.Regridder(annual_tas, target, method="bilinear", periodic=True)
-annual_tas_regrid = regridder(annual_tas)
-annual_tas_regrid.attrs |= annual_tas.attrs
-
-
-# Seems to be an xarray bug? This only runs if we first compute() like this:
-annual_tas_regrid.compute().to_netcdf("era5_annual_tas_1995_2025_regrid.nc", mode="w")
 
 cluster.scale(0)
 cluster.shutdown()

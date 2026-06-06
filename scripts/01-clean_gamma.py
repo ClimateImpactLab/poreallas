@@ -8,13 +8,17 @@ These gammas are pre-created so the projection system itself can be deterministi
 
 import csv
 import datetime
+import os
 import re
 import uuid
 
+from dotenv import load_dotenv
 import fsspec
 import metacsv
 import numpy as np
 import xarray as xr
+
+load_dotenv()
 
 UID = str(uuid.uuid4())
 START_TIME = datetime.datetime.now(datetime.UTC).isoformat()
@@ -30,7 +34,7 @@ print(
 # Beware, it's ~35 GiB.
 # This is the file at ./data/2_projection/3_impacts/main_specification/inputs/Agespec_interaction_GMFD_POLY-4_TINV_CYA_NW_w1.csvv within the downloaded data.
 CSVV_URI = "./data/raw/Agespec_interaction_GMFD_POLY-4_TINV_CYA_NW_w1.csvv"
-OUT_ZARR = "./data/parsed/gamma.zarr"
+OUT_ZARR = os.getenv("POREALLAS_GAMMA_URI")
 SEED = 42
 N_SAMPLES = 15
 
@@ -175,7 +179,7 @@ def main():
     g.attrs["created_at"] = START_TIME
 
     g = g.chunk({"sample": 1})
-    g.to_zarr(OUT_ZARR, mode="w")
+    g.to_zarr(OUT_ZARR, consolidated=False)
     print(f"Written to {OUT_ZARR}")
 
 

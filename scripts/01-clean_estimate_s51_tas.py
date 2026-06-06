@@ -1,6 +1,12 @@
+import os
+
+from dotenv import load_dotenv
 import xarray as xr
 
-# import matplotlib.pyplot as plt
+load_dotenv()
+
+OUT_ZARR = os.getenv("POREALLAS_TAS_FORECAST_URI")
+
 
 ds_tas = xr.merge(
     [
@@ -13,7 +19,8 @@ ds_tas = xr.merge(
 # Estimate daily tas from daily tasmax and daily tasmin.
 ds_tas["tas"] = (ds_tas["mx2t24"] + ds_tas["mn2t24"]) / 2
 
-ds_tas[["tas"]].to_zarr("./data/parsed/s51_tas.zarr")
+ds_tas[["tas"]].to_zarr(OUT_ZARR, consolidated=False)
+print(f"s51 data written to {OUT_ZARR}")
 
 # # Need to know min, max of daily tas if we're doing this via histograms so we know the range for histogram bins.
 # global_tas_domain = (
