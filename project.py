@@ -6,6 +6,7 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
+    import os
 
     import geopandas
     import isku
@@ -18,23 +19,23 @@ def _():
     from xclim.core import units
     from xhistogram.xarray import histogram
 
-    return geopandas, histogram, isku, mo, np, numba, plt, sns, units, xr
+    return geopandas, histogram, isku, mo, np, numba, os, plt, sns, units, xr
 
 
 @app.cell
-def _():
-    TAS_FORECAST_URI = "./data/parsed/s51_tas.zarr/"
-    ERA5_URI = "./data/era5_daily_tas_1995_2025_regrid.nc"
-    GAMMA_URI = "./data/parsed/gamma.zarr/"
-    REGIONS_URI = "./data/parsed/segment_weights.zarr/"
-    IMPACT_REGION_POLYGONS = "./data/parsed/impact_region.parquet"
+def _(os):
+    TAS_FORECAST_URI = os.getenv("POREALLAS_TAS_FORECAST_URI")
+    ERA5_URI = os.getenv("POREALLAS_ERA5_URI")
+    GAMMA_URI = os.getenv("POREALLAS_GAMMA_URI")
+    REGIONS_URI = os.getenv("POREALLAS_REGIONS_URI")
+    IMPACT_REGION_POLYGONS = os.getenv("POREALLAS_REGIONS_POLYGONS_URI")
 
     # Or using this because I have it on hand:
     # NOTE: You'll need to update this path to match your system.
     # Download and unpack https://zenodo.org/records/6416119/files/data.zip?download=1.
     # Beware, it's ~35 GiB.
     # This is the file at ./data/input/raw/data/2_projection/2_econ_vars/SSP3.nc4 within the downloaded data.
-    SOCIOECONOMICS_URI = "./data/raw/SSP3.nc4"
+    SOCIOECONOMICS_URI = os.getenv("POREALLAS_SOCIOECONOMICS_URI")
     return (
         ERA5_URI,
         GAMMA_URI,
@@ -115,7 +116,7 @@ def _(isku, np, units, xr):
 @app.cell
 def _(FuzzyGridWeightingExtractor, REGIONS_URI, xr):
     regions = FuzzyGridWeightingExtractor(
-        xr.open_zarr(REGIONS_URI).load(), tolerance=0.5
+        xr.open_dataset(REGIONS_URI).load(), tolerance=0.5
     )
     return (regions,)
 
@@ -166,7 +167,7 @@ def _(SOCIOECONOMICS_URI, np, xr):
 
 @app.cell
 def _(GAMMA_URI, xr):
-    gammas = xr.open_zarr(GAMMA_URI)
+    gammas = xr.open_dataset(GAMMA_URI)
     return (gammas,)
 
 
@@ -192,7 +193,7 @@ def _(histogram, isku, np, units, xr):
 def _(TAS_FORECAST_URI, plt, sns, xr):
     # DEBUG more sanity checks
 
-    _ds = xr.open_zarr(TAS_FORECAST_URI, chunks={}).set_coords("valid_time")
+    _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -211,7 +212,7 @@ def _(TAS_FORECAST_URI, plt, sns, xr):
 
 @app.cell
 def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, regions, xr):
-    _ds = xr.open_zarr(TAS_FORECAST_URI, chunks={}).set_coords("valid_time")
+    _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -243,7 +244,7 @@ def _():
     # # # histogram_forecast_tas.sum(dim="tas_bin")
     # # # assert (histogram_forecast_tas["time"].dt.days_in_month == histogram_forecast_tas.sum(dim="tas_bin")).all().compute()
 
-    # _ds = xr.open_zarr(TAS_FORECAST_URI, chunks={}).set_coords("valid_time")
+    # _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
 
     # # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     # _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -751,11 +752,6 @@ def _(mo):
 
     [ ] Uniform dollar year.
     """)
-    return
-
-
-@app.cell
-def _():
     return
 
 
