@@ -11,13 +11,22 @@ Fork/clone this repository.
 
 You will need to have [uv](https://docs.astral.sh/uv/) installed and configured on your system to replicate this environment for analysis and development.
 
-### Data and parsing
+### Configuration
 
-If you do not already have access to parsed input data you will need to download and clean input data, running the scripts in `./scripts/` in ordered sequence. This creates and populates input data in the `./data/` directory. Note this requires downloading and processing a significant amount of data. Some steps will require access to a daskhub cluster. This will be noted in script comments and documentation.
+Key configurations are set through environment variables or a .env file (see `example.env`).
 
-Data downloads and processing for the prototype were run in the first week of June, 2026.
+The current configurations are:
 
-Data downloads from Copernicus CDS (https://cds.climate.copernicus.eu/) require an ECMWF account. You will need to configure `cdsapi` with you account credentials (see https://github.com/ecmwf/cdsapi).
+* POREALLAS_TAS_FORECAST_URI: URI to the cleaned ECMWF S51 ensemble air temperature Zarr Store.
+* POREALLAS_ERA5_URI: URI to the Zarr Store of cleaned daily ERA5 dataset used for historical climate and impacts analysis.
+* POREALLAS_GAMMA_URI: URI to the Zarr Store of "gamma" parameters used when calculating to calculate a mortality response function.
+* POREALLAS_REGIONS_URI: URI to the Zarr Store of region and grid weights or "segment weights".
+* POREALLAS_REGIONS_POLYGONS_URI: URI to geoparquet file with polygons for each region. Used for mapping.
+* POREALLAS_SOCIOECONOMICS_URI: URI to file with each region's GDP per capita (gdppc).
+
+These are used to run the prototype in `project.py` and in `scripts/` for downloads, parsing, and cleaning.
+
+Each of these variables can point to data in cloud storage or local storage. 
 
 ### Projecting
 
@@ -30,6 +39,15 @@ uv run marimo edit project.py
 ```
 
 from the root of this repository.
+
+### Data and parsing
+
+If you do not already have access to parsed input data you will need to download and clean input data, running the scripts in `./scripts/` in ordered sequence. This creates and populates input data in the `./data/` directory. Note this requires downloading and processing a significant amount of data. Some steps will require access to a daskhub cluster. This will be noted in script comments and documentation.
+
+Data downloads and processing for the prototype were run in the first week of June, 2026.
+
+Data downloads from Copernicus CDS (https://cds.climate.copernicus.eu/) require an ECMWF account. You will need to configure `cdsapi` with you account credentials (see https://github.com/ecmwf/cdsapi).
+
 
 ## Support
 
