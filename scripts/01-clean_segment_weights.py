@@ -11,7 +11,6 @@ IN_WEIGHTS_FILE = (
 OUT_ZARR = os.getenv("POREALLAS_REGIONS_URI")
 
 
-
 sw = pd.read_csv(
     IN_WEIGHTS_FILE,
 )
