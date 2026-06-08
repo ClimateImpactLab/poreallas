@@ -1,5 +1,5 @@
 # Format, lint project
-validate: format lint
+validate: format lint test
 
 # Format project code
 format:
@@ -9,3 +9,7 @@ format:
 lint:
     uv run ruff check --fix
     uv run ty check
+
+# Run tests/
+test:
+    uv run pytest -v --color=yes
