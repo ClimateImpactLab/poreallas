@@ -12,12 +12,9 @@ def _():
     import isku
     import marimo as mo
     import matplotlib.pyplot as plt
-    import numba
     import numpy as np
     import seaborn as sns
     import xarray as xr
-    from xclim.core import units
-    from xhistogram.xarray import histogram
 
     from poreallas.extract import (
         FuzzyGridWeightingExtractor,

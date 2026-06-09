@@ -13,7 +13,6 @@ import xarray as xr
 from poreallas.project import mortality_effect_model
 
 
-
 @pytest.fixture(scope="function")
 def input_dataset():
     """
@@ -102,4 +101,3 @@ def test_noadapt_beta(input_dataset):
     )
 
     xr.testing.assert_allclose(actual, expected, atol=1e-8)
-

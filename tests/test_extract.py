@@ -1,6 +1,7 @@
 """
 Test logic related to region extraction and transformation
 """
+
 import isku
 import numpy as np
 import pytest
@@ -129,4 +130,3 @@ def test_make_climtas(basic_segment_weights):
         regions=basic_segment_weights,
     )
     xr.testing.assert_allclose(actual, expected)
-

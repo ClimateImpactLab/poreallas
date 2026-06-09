@@ -14,10 +14,9 @@ def _make_annual_tas(ds: xr.Dataset) -> xr.Dataset:
     """
     Compute tas variable in degC. Should be annual.
     """
-    tas = units.convert_units_to(ds["tas"], "degC")
+    tas = xr.DataArray(units.convert_units_to(ds["tas"], "degC"))
     ## TODO: If the data needs to be annualized... Might need this.
     return tas.groupby("time.year").mean("time").to_dataset()
-    # return tas.to_dataset()
 
 
 def _make_30hbartlett_climtas(ds: xr.Dataset) -> xr.Dataset:
@@ -73,7 +72,7 @@ class FuzzyGridWeightingExtractor(isku.RegionExtractor):
 
 
 def _make_monthly_tas_histogram(ds: xr.Dataset) -> xr.Dataset:
-    _tas = units.convert_units_to(ds["tas"], "degC")
+    _tas = xr.DataArray(units.convert_units_to(ds["tas"], "degC"))
 
     _bins = np.arange(-105, 66)  # Range we get histogram count for. NOTE: in degC!
     _tas_annual_histogram = _tas.resample(time="1MS").map(

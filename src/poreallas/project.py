@@ -93,7 +93,7 @@ def minimum_arg(x: xr.DataArray, *, dim="tas_bin", lmmt=10.0, ummt=30.0):
     return min_value, min_arg
 
 
-def _add_degree_coord(da: xr.DataArray, max_degrees: float) -> xr.DataArray:
+def _add_degree_coord(da: xr.DataArray, max_degrees: int) -> xr.DataArray:
     """
     Raises array to 1 ... max_degrees power, concatenating all together in a new "degree" coordinate.
     """
