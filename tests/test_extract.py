@@ -1,5 +1,7 @@
 """
 Test logic related to region extraction and transformation
+
+These are adapted from the tests in the prototype https://github.com/brews/ideal-succotash/blob/c30a9d8226aaef806a16c5fdae3c186761811829/tests/mortality/test_transformation.py.
 """
 
 import isku
