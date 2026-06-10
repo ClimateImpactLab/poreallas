@@ -16,15 +16,10 @@ def _():
     import seaborn as sns
     import xarray as xr
 
-    from poreallas.extract import (
-        FuzzyGridWeightingExtractor,
-        make_climtas,
-        make_tas_monthly_histogram,
-    )
+    from poreallas.extract import make_climtas, make_tas_monthly_histogram
     from poreallas.project import mortality_effect_model
 
     return (
-        FuzzyGridWeightingExtractor,
         geopandas,
         isku,
         make_climtas,
@@ -46,12 +41,6 @@ def _(os):
     GAMMA_URI = os.getenv("POREALLAS_GAMMA_URI")
     REGIONS_URI = os.getenv("POREALLAS_REGIONS_URI")
     IMPACT_REGION_POLYGONS = os.getenv("POREALLAS_REGIONS_POLYGONS_URI")
-
-    # Or using this because I have it on hand:
-    # NOTE: You'll need to update this path to match your system.
-    # Download and unpack https://zenodo.org/records/6416119/files/data.zip?download=1.
-    # Beware, it's ~35 GiB.
-    # This is the file at ./data/input/raw/data/2_projection/2_econ_vars/SSP3.nc4 within the downloaded data.
     SOCIOECONOMICS_URI = os.getenv("POREALLAS_SOCIOECONOMICS_URI")
     return (
         ERA5_URI,
@@ -64,10 +53,11 @@ def _(os):
 
 
 @app.cell
-def _(FuzzyGridWeightingExtractor, REGIONS_URI, xr):
-    regions = FuzzyGridWeightingExtractor(
-        xr.open_dataset(REGIONS_URI).load(), tolerance=0.5
-    )
+def _(REGIONS_URI, isku, xr):
+    _region_weights = xr.open_dataset(REGIONS_URI)[
+        ["lat", "lon", "region", "weight"]
+    ]  # Only what we need.
+    regions = isku.GridWeightingRegions(_region_weights.load())
     return (regions,)
 
 
@@ -91,27 +81,7 @@ def _(ERA5_URI, isku, make_climtas, regions, xr):
 @app.cell
 def _(SOCIOECONOMICS_URI, np, xr):
     socioecon = xr.open_dataset(SOCIOECONOMICS_URI)
-
-    # TODO: Maybe this should be in a cleaning script.
-    # Socioecon projection data is backfilled.
-    # Though the socioeconomic projection start in 2010, projections used 2015
-    # GDPpc values to backfill to 1981. Extend GDPpc data range further back so
-    # 13-year half-Bartlett smoothing can begin in 1981 without NaNs.
-    _kernel_length = 13
-    loggdppc = np.log(
-        socioecon["gdppc"]
-        .sel(year=slice(2015, 2100))
-        .reindex({"year": range(1981 - _kernel_length, 2100)}, method="backfill")
-    )
-    _w = np.arange(_kernel_length)
-    _weight = xr.DataArray(_w / _w.sum(), dims=["window"])
-    loggdppc = (
-        loggdppc.rolling(year=_kernel_length).construct(year="window").dot(_weight)
-    )
-
-    # But we just need something for this projection prototype, so let's grab 2015.
-    loggdppc = loggdppc.sel(model="high", year=2015, drop=True)
-    loggdppc
+    loggdppc = np.log(socioecon["gdppc"].sel(year=2023, drop=True))
     return (loggdppc,)
 
 
@@ -160,26 +130,32 @@ def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, np, regions, xr):
     _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
     _ds = _ds.chunk("auto")
 
-
-    # Drop months without required number of obs.
+    # Drop months without required number of obs. Forecast ensemble is for a fixed number of days so we expect to usually trim off the last month of the forecast if it is ragged and missing days beyond a threshold.
     _dt_dim = "time"
     _n_initial = _ds[_dt_dim].size
     _number_obs = _ds[_dt_dim].resample(time="ME").count()
     _days_in_month = _number_obs["time"].dt.days_in_month
     required_percent = 0.9
     _min_req = np.round(_days_in_month * required_percent)
-    _qualifying_months = _number_obs.where(_number_obs >= _min_req, drop=True)["time"].dt.month
+    _qualifying_months = _number_obs.where(_number_obs >= _min_req, drop=True)[
+        "time"
+    ].dt.month
     _ds = _ds.where(_ds["time"].dt.month.isin(_qualifying_months), drop=True)
 
     _n_current = _ds[_dt_dim].size
     _n_initial_months = _number_obs["time"].size
     _n_qualifying_months = _qualifying_months["time"].size
 
-    print(f"continuing with {_n_qualifying_months} of {_n_initial_months} forecast months after removing incomplete months")
-    print(f"continuing with {_n_current} of {_n_initial} forecast periods after removing incomplete months")
+    print(
+        f"continuing with {_n_qualifying_months} of {_n_initial_months} forecast months after removing incomplete months"
+    )
+    print(
+        f"continuing with {_n_current} of {_n_initial} forecast periods after removing incomplete months"
+    )
 
-    assert (_n_qualifying_months - _n_initial_months) < 2, "More than one incomplete month was removed from the forecast while checking for incomplete months. Something unexpected is happening."
-
+    assert (_n_qualifying_months - _n_initial_months) < 2, (
+        "More than one incomplete month was removed from the forecast while checking for incomplete months. Something unexpected is happening."
+    )
 
     histogram_forecast_tas = isku.extract_regions(
         _ds,
@@ -443,13 +419,11 @@ def _(mo):
     [x] What period are hindcasts?
             - According to https://confluence.ecmwf.int/display/CKB/C3S+seasonal+forecast+product+descriptions. "In general, the common hindcast period, 1993 - 2016, is used as the reference period for C3S data and graphical products, regardless of the hindcast period available for each individual component system (unless stated otherwise)."
 
-    [/] Grid weights and regions (aka segment weights). Population weighting.
+    [x] Grid weights and regions (aka segment weights). Population weighting.
 
     [/] Proportion of population in each age cohort.
 
-    [/] GDPpc.
-
-    [/] Uniform dollar year.
+    [x] GDPpc.
     """)
     return
 
