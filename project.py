@@ -143,7 +143,7 @@ def _(TAS_FORECAST_URI, plt, sns, xr):
 
 
 @app.cell
-def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, regions, xr):
+def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, np, regions, xr):
     _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
@@ -160,65 +160,33 @@ def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, regions, xr):
     _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
     _ds = _ds.chunk("auto")
 
+
+    # Drop months without required number of obs.
+    _dt_dim = "time"
+    _n_initial = _ds[_dt_dim].size
+    _number_obs = _ds[_dt_dim].resample(time="ME").count()
+    _days_in_month = _number_obs["time"].dt.days_in_month
+    required_percent = 0.9
+    _min_req = np.round(_days_in_month * required_percent)
+    _qualifying_months = _number_obs.where(_number_obs >= _min_req, drop=True)["time"].dt.month
+    _ds = _ds.where(_ds["time"].dt.month.isin(_qualifying_months), drop=True)
+
+    _n_current = _ds[_dt_dim].size
+    _n_initial_months = _number_obs["time"].size
+    _n_qualifying_months = _qualifying_months["time"].size
+
+    print(f"continuing with {_n_qualifying_months} of {_n_initial_months} forecast months after removing incomplete months")
+    print(f"continuing with {_n_current} of {_n_initial} forecast periods after removing incomplete months")
+
+    assert (_n_qualifying_months - _n_initial_months) < 2, "More than one incomplete month was removed from the forecast while checking for incomplete months. Something unexpected is happening."
+
+
     histogram_forecast_tas = isku.extract_regions(
         _ds,
         template=make_tas_monthly_histogram,
         regions=regions,
     )
     return (histogram_forecast_tas,)
-
-
-@app.cell
-def _():
-    # # # # DEBUG Remove incomplete months.
-    # # # # TODO Maybe should be part of earlier cleanup step.
-
-    # # # histogram_forecast_tas.sum(dim="tas_bin")
-    # # # assert (histogram_forecast_tas["time"].dt.days_in_month == histogram_forecast_tas.sum(dim="tas_bin")).all().compute()
-
-    # _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
-
-    # # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
-    # _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
-    # _ds = _ds.sortby("longitude")
-
-    # _ds = _ds.rename(
-    #     {
-    #         "valid_time": "time",
-    #         "latitude": "lat",
-    #         "longitude": "lon",
-    #     }
-    # )
-    # _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
-    # _ds = _ds.chunk("auto")
-
-    # # # number_obs = _ds["time"].resample(time="ME").count()
-    # # # days_in_month = number_obs["time"].dt.days_in_month
-    # # # complete_months = number_obs == days_in_month
-    # # # complete_months["time"]
-    # # # _ds["time"].dt.month (number_obs == days_in_month).sel(time.dt.month = _ds["time"].dt.month)
-
-    # # # _ds["time"].dt.days_in_month
-    # # # _ds["time"].dt.month
-
-    # # def _map_fn(x, dt_dim):
-    # #     number_obs = x[dt_dim].count()
-    # #     days_in_month = x[dt_dim].dt.days_in_month
-    # #     complete_months = number_obs == days_in_month
-    # #     if not all(complete_months):
-    # #         return xr.full_like(x, fill_value=np.nan)
-    # #     return x
-
-    # #     # print(x["time"].count())
-    # #     # if (x.notnull()["time"].count() == x["time"].dt.days_in_month).all():
-    # #     #     return x
-    # #     # return None
-
-    # # _obs_in_month = _ds.resample(time="ME").map(_map_fn, args=("time",))#.dropna(dim="time")
-    # # _obs_in_month
-
-    # _ds.sel(time=slice("2026-05", "2026-11"))
-    return
 
 
 @app.cell(hide_code=True)
@@ -464,24 +432,30 @@ def _(mo):
 
     [x] ERA5 baseline?
 
-    [ ] Guard against incomplete months.
+    [x] Guard against incomplete months.
 
-    [ ] Gap between ERA5 and forecast.
+    [/] Gap between ERA5 and forecast.
 
         (thurs -> Mon (friday, latest) ^)
 
-    [ ] Higher temporal resolution hindcast from forecast ensemble? (what period are hindcasts?)
+    [ ] Higher temporal resolution hindcast from forecast ensemble?
 
-    [ ] tasmin/tasmax vs hr instantaneous average.
+    [x] What period are hindcasts?
+            - According to https://confluence.ecmwf.int/display/CKB/C3S+seasonal+forecast+product+descriptions. "In general, the common hindcast period, 1993 - 2016, is used as the reference period for C3S data and graphical products, regardless of the hindcast period available for each individual component system (unless stated otherwise)."
 
-    [ ] Grid weights and regions (aka segment weights). Population weighting.
+    [/] Grid weights and regions (aka segment weights). Population weighting.
 
-    [ ] Proportion of population in each age cohort.
+    [/] Proportion of population in each age cohort.
 
-    [ ] GDPpc.
+    [/] GDPpc.
 
-    [ ] Uniform dollar year.
+    [/] Uniform dollar year.
     """)
+    return
+
+
+@app.cell
+def _():
     return
 
 
