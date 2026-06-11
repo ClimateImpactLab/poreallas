@@ -9,7 +9,12 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from poreallas.project import mortality_effect_model, uclip, _uclip_gufunc
+from poreallas.project import (
+    mortality_effect_model,
+    uclip,
+    _uclip_gufunc,
+    calculate_beta,
+)
 
 
 @pytest.fixture
@@ -121,8 +126,10 @@ def test_mortality_effect_model_gamma_mean(gamma, loggdppc, histogram_tas, climt
         ],
     )
 
+    with_beta = calculate_beta(xr.merge([transformed_input, params]))
+
     actual = isku.project(
-        xr.merge([transformed_input, params]),
+        with_beta,
         model=mortality_effect_model,
     )
 
@@ -165,8 +172,10 @@ def test_mortality_effect_model_gamma_sampled(gamma, loggdppc, histogram_tas, cl
         ],
     )
 
+    with_beta = calculate_beta(xr.merge([transformed_input, params]))
+
     actual = isku.project(
-        xr.merge([transformed_input, params]),
+        with_beta,
         model=mortality_effect_model,
     )
 

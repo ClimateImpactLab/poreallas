@@ -17,9 +17,10 @@ def _():
     import xarray as xr
 
     from poreallas.extract import make_climtas, make_tas_monthly_histogram
-    from poreallas.project import mortality_effect_model
+    from poreallas.project import mortality_effect_model, calculate_beta
 
     return (
+        calculate_beta,
         geopandas,
         isku,
         make_climtas,
@@ -53,67 +54,22 @@ def _(os):
 
 
 @app.cell
-def _(REGIONS_URI, isku, xr):
-    _region_weights = xr.open_dataset(REGIONS_URI)[
-        ["lat", "lon", "region", "weight"]
-    ]  # Only what we need.
-    regions = isku.GridWeightingRegions(_region_weights.load())
-    return (regions,)
-
-
-@app.cell
-def _(ERA5_URI, isku, make_climtas, regions, xr):
+def _(ERA5_URI, xr):
     _ds = xr.open_dataset(ERA5_URI)
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
     _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
+    _ds = _ds.chunk("auto")
 
-    climtas = isku.extract_regions(
-        _ds,
-        template=make_climtas,
-        regions=regions,
-    ).sel(year=2025, drop=True)
-    return (climtas,)
+    reanalysis = _ds
+    reanalysis
+    return (reanalysis,)
 
 
 @app.cell
-def _(SOCIOECONOMICS_URI, np, xr):
-    socioecon = xr.open_dataset(SOCIOECONOMICS_URI)
-    loggdppc = np.log(socioecon["gdppc"].sel(year=2023, drop=True))
-    return (loggdppc,)
-
-
-@app.cell
-def _(GAMMA_URI, xr):
-    gammas = xr.open_dataset(GAMMA_URI)
-    return (gammas,)
-
-
-@app.cell
-def _(TAS_FORECAST_URI, plt, sns, xr):
-    # DEBUG more sanity checks
-
-    _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
-
-    # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
-    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
-    _ds = _ds.sortby("longitude")
-
-    with sns.axes_style("whitegrid"):
-        _ds.set_coords("valid_time")["tas"].isel(latitude=100, longitude=100).squeeze(
-            drop=True
-        ).plot.scatter(x="valid_time", marker=".", alpha=0.3, edgecolors="none")
-        _ds.set_coords("valid_time")["tas"].isel(latitude=100, longitude=100).squeeze(
-            drop=True
-        ).mean(dim="number").plot.line(x="valid_time", color="C1")
-        plt.show()
-    return
-
-
-@app.cell
-def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, np, regions, xr):
+def _(TAS_FORECAST_URI, np, xr):
     _ds = xr.open_dataset(TAS_FORECAST_URI).set_coords("valid_time")
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
@@ -157,42 +113,171 @@ def _(TAS_FORECAST_URI, isku, make_tas_monthly_histogram, np, regions, xr):
         "More than one incomplete month was removed from the forecast while checking for incomplete months. Something unexpected is happening."
     )
 
-    histogram_forecast_tas = isku.extract_regions(
-        _ds,
-        template=make_tas_monthly_histogram,
-        regions=regions,
-    )
-    return (histogram_forecast_tas,)
+    forecast_ensemble = _ds
+    forecast_ensemble
+    return (forecast_ensemble,)
+
+
+@app.cell
+def _(forecast_ensemble, plt, sns):
+    # More sanity checks
+
+    # Arbitrary gridpoint.
+    target_region = dict(lat=100, lon=100)
+
+    with sns.axes_style("whitegrid"):
+        forecast_ensemble["tas"].isel(**target_region).squeeze(drop=True).plot.scatter(
+            x="time", marker=".", alpha=0.3, edgecolors="none"
+        )
+        forecast_ensemble["tas"].isel(**target_region).squeeze(drop=True).mean(
+            dim="number"
+        ).plot.line(x="time", color="C1")
+        plt.show()
+    return
+
+
+@app.cell
+def _(REGIONS_URI, isku, xr):
+    _region_weights = xr.open_dataset(REGIONS_URI)[
+        ["lat", "lon", "region", "weight"]
+    ]  # Only what we need.
+    regions = isku.GridWeightingRegions(_region_weights.load())
+    return (regions,)
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ### Forecast
+    ## Fix response function: calculate $\beta$
     """)
     return
 
 
 @app.cell
-def _(climtas, gammas, histogram_forecast_tas, loggdppc, xr):
+def _(
+    forecast_ensemble,
+    isku,
+    make_tas_monthly_histogram,
+    reanalysis,
+    regions,
+    xr,
+):
+    histogram_hist_tas = isku.extract_regions(
+        reanalysis,
+        template=make_tas_monthly_histogram,
+        regions=regions,
+    )
+
+    histogram_forecast_tas = isku.extract_regions(
+        forecast_ensemble,
+        template=make_tas_monthly_histogram,
+        regions=regions,
+    )
+
+    # Using the same static beta for forecast and reanalysis projection requires the histogram tas_bin for these data need to be equal, too. So we're  calculating it here.
+    # But, we otherwise, we don't need the complete histgram_tas to calculate beta.
+    xr.testing.assert_allclose(
+        histogram_hist_tas["tas_bin"], histogram_forecast_tas["tas_bin"]
+    )
+    return histogram_forecast_tas, histogram_hist_tas
+
+
+@app.cell
+def _(
+    GAMMA_URI,
+    SOCIOECONOMICS_URI,
+    calculate_beta,
+    histogram_forecast_tas,
+    isku,
+    make_climtas,
+    np,
+    reanalysis,
+    regions,
+    xr,
+):
+    # Using same, static beta in mortality projections so calculating it once here.
+    # Calculating it ahead of time can help with diagnostics.
+
+    _climtas = isku.extract_regions(
+        reanalysis,
+        template=make_climtas,
+        regions=regions,
+    ).sel(year=2025, drop=True)
+
+    _socioecon = xr.open_dataset(SOCIOECONOMICS_URI)
+    _loggdppc = np.log(_socioecon["gdppc"].sel(year=2023, drop=True))
+
+    _gammas = xr.open_dataset(GAMMA_URI)
+
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
-    forecast_input_ds = (
+    beta_input = (
         xr.Dataset(
             {
-                "histogram_tas": histogram_forecast_tas["histogram_tas"],
-                "climtas": climtas["climtas"],
-                "loggdppc": loggdppc,
-                "gamma": gammas["gamma_mean"],
+                "tas_bin": histogram_forecast_tas["tas_bin"],
+                "climtas": _climtas["climtas"],
+                "loggdppc": _loggdppc,
+                "gamma": _gammas["gamma_mean"],
             }
         )
         .dropna(dim="region")
         .chunk(
             {
                 "region": "auto",  # "auto" is a sensible default.
-                "time": -1,  # This needs to be all in memory, thus -1.
                 "tas_bin": -1,  # This also needs to be all in memory.
                 "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
                 "degree": -1,  # For gammas and polynomial calculations. Should all be in memory.
+            },
+        )
+        .unify_chunks()
+    )
+
+    fixed_beta = calculate_beta(beta_input).astype("float32").compute()
+    fixed_beta
+    return (fixed_beta,)
+
+
+@app.cell
+def _(fixed_beta, plt, sns):
+    # Sanity check. It should be u-shaped.
+    with sns.axes_style("whitegrid"):
+        fixed_beta["beta"].sel(region="USA.14.608").plot(hue="age_cohort")
+    plt.gca()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Project mortality
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ### Effect for seasonal forecast ensemble
+    """)
+    return
+
+
+@app.cell
+def _(fixed_beta, histogram_forecast_tas, xr):
+    # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
+    forecast_input_ds = (
+        xr.Dataset(
+            {
+                "histogram_tas": histogram_forecast_tas["histogram_tas"],
+                "beta": fixed_beta["beta"],
+            }
+        )
+        .dropna(dim="region")
+        .chunk(
+            {
+                "region": "auto",  # "auto" is a sensible default.
+                "time": -1,
+                "tas_bin": -1,
+                "age_cohort": 1,
                 "number": 1,
             },
         )
@@ -228,13 +313,8 @@ def _(forecast_input_ds, isku, mortality_effect_model):
     }
 
     projected_forecast = projected_forecast.compute()
-    return (projected_forecast,)
-
-
-@app.cell
-def _(projected_forecast):
     projected_forecast
-    return
+    return (projected_forecast,)
 
 
 @app.cell
@@ -243,9 +323,6 @@ def _(plt, projected_forecast, sns):
     with sns.axes_style("whitegrid"):
         projected_forecast["effect"].sel(region="USA.14.608").plot(hue="age_cohort")
     plt.gca()
-    # WARNING: Not sure why we're getting values for December...
-    # Ahh, because it's 215 days from the beginning of May this year...
-    # TODO: Guard against incomplete months.
     return
 
 
@@ -288,48 +365,28 @@ def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected_forecast):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ### Hist
+    ### Effect for reanalysis climatology
     """)
     return
 
 
 @app.cell
-def _(ERA5_URI, isku, make_tas_monthly_histogram, regions, xr):
-    _ds = xr.open_dataset(ERA5_URI)
-
-    # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
-    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
-    _ds = _ds.sortby("longitude")
-    _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
-    _ds = _ds.chunk("auto")
-
-    histogram_hist_tas = isku.extract_regions(
-        _ds,
-        template=make_tas_monthly_histogram,
-        regions=regions,
-    )
-    return (histogram_hist_tas,)
-
-
-@app.cell
-def _(climtas, gammas, histogram_hist_tas, loggdppc, xr):
+def _(fixed_beta, histogram_hist_tas, xr):
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
     hist_input_ds = (
         xr.Dataset(
             {
                 "histogram_tas": histogram_hist_tas["histogram_tas"],
-                "climtas": climtas["climtas"],
-                "loggdppc": loggdppc,
-                "gamma": gammas["gamma_mean"],
+                "beta": fixed_beta["beta"],
             }
         )
         .dropna(dim="region")
         .chunk(
             {
                 "region": "auto",  # "auto" is a sensible default.
-                "time": -1,  # This needs to be all in memory, thus -1.
-                "tas_bin": -1,  # This also needs to be all in memory.
-                "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
+                "time": -1,
+                "tas_bin": -1,
+                "age_cohort": 1,
             },
         )
         .unify_chunks()
@@ -410,7 +467,7 @@ def _(mo):
 
     [x] Guard against incomplete months.
 
-    [/] Gap between ERA5 and forecast.
+    [x] Gap between ERA5 and forecast.
 
         (thurs -> Mon (friday, latest) ^)
 
@@ -425,11 +482,6 @@ def _(mo):
 
     [x] GDPpc.
     """)
-    return
-
-
-@app.cell
-def _():
     return
 
 

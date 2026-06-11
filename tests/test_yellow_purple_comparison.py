@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 import xarray as xr
 
-from poreallas.project import mortality_effect_model
+from poreallas.project import calculate_beta
 
 
 @pytest.fixture(scope="function")
@@ -77,7 +77,7 @@ def test_noadapt_beta(input_dataset):
     """
     Check that we can replicate 'yellow-purple' beta creation for an 'no adaptation' mortality projection.
     """
-    actual = mortality_effect_model.pre_project(input_dataset)["beta"]
+    actual = calculate_beta(input_dataset)["beta"]
 
     expected = xr.DataArray(
         np.array(

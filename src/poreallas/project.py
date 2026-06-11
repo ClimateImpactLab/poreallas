@@ -176,7 +176,7 @@ def _mortality_effects_model(ds: xr.Dataset) -> xr.Dataset:
     return xr.Dataset({"effect": effect.astype("float32")})
 
 
-def _noadapt_beta_from_gamma(ds: xr.Dataset) -> xr.Dataset:
+def calculate_beta(ds: xr.Dataset) -> xr.Dataset:
     """
     Calculates mortality impact polynomial model's beta coefficients from gamma coefficients for the no-adaptation scenario.
 
@@ -208,7 +208,7 @@ def _noadapt_beta_from_gamma(ds: xr.Dataset) -> xr.Dataset:
 
 
 mortality_effect_model = isku.build_projection_template(
-    pre=_noadapt_beta_from_gamma,
+    pre=_no_processing,
     project=_mortality_effects_model,
     post=_no_processing,
 )
