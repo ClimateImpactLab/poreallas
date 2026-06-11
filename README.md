@@ -23,6 +23,7 @@ The current configurations are:
 * POREALLAS_REGIONS_URI: URI to the Zarr Store of region and grid weights or "segment weights".
 * POREALLAS_REGIONS_POLYGONS_URI: URI to geoparquet file with polygons for each region. Used for mapping.
 * POREALLAS_SOCIOECONOMICS_URI: URI to file with each region's GDP per capita (gdppc).
+* POREALLAS_EFFECTS_URI: Optional URI to write Zarr store of projected mortality effects. Will not write output if unset.
 
 These are used to run the prototype in `project.py` and in `scripts/` for downloads, parsing, and cleaning.
 

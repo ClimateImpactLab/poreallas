@@ -6,7 +6,9 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
+    import datetime
     import os
+    import uuid
 
     import geopandas
     import isku
@@ -21,6 +23,7 @@ def _():
 
     return (
         calculate_beta,
+        datetime,
         geopandas,
         isku,
         make_climtas,
@@ -31,19 +34,25 @@ def _():
         os,
         plt,
         sns,
+        uuid,
         xr,
     )
 
 
 @app.cell
 def _(os):
+    # Input
     TAS_FORECAST_URI = os.getenv("POREALLAS_TAS_FORECAST_URI")
     ERA5_URI = os.getenv("POREALLAS_ERA5_URI")
     GAMMA_URI = os.getenv("POREALLAS_GAMMA_URI")
+    SOCIOECONOMICS_URI = os.getenv("POREALLAS_SOCIOECONOMICS_URI")
     REGIONS_URI = os.getenv("POREALLAS_REGIONS_URI")
     IMPACT_REGION_POLYGONS = os.getenv("POREALLAS_REGIONS_POLYGONS_URI")
-    SOCIOECONOMICS_URI = os.getenv("POREALLAS_SOCIOECONOMICS_URI")
+
+    # Output
+    EFFECTS_URI = os.getenv("POREALLAS_EFFECTS_URI")
     return (
+        EFFECTS_URI,
         ERA5_URI,
         GAMMA_URI,
         IMPACT_REGION_POLYGONS,
@@ -309,9 +318,6 @@ def _(forecast_input_ds):
 def _(forecast_input_ds, isku, mortality_effect_model):
     projected_forecast = isku.project(forecast_input_ds, model=mortality_effect_model)
 
-    # Taking the average of the forecast ensemble members.
-    projected_forecast["effect"] = projected_forecast["effect"].mean(dim="number")
-
     # Not required, just for fun.
     projected_forecast["effect"].attrs = {
         "units": "deaths per 100,000 people",
@@ -327,7 +333,9 @@ def _(forecast_input_ds, isku, mortality_effect_model):
 def _(plt, projected_forecast, sns):
     # Quick plot for an arbitrary region for diagnostics.
     with sns.axes_style("whitegrid"):
-        projected_forecast["effect"].sel(region="USA.14.608").plot(hue="age_cohort")
+        projected_forecast["effect"].mean(dim="number").sel(region="USA.14.608").plot(
+            hue="age_cohort"
+        )
     plt.gca()
     return
 
@@ -344,7 +352,7 @@ def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected_forecast):
     )
     # Join projected effects on region names.
     _polygons = _polygons.merge(
-        projected_forecast["effect"].to_dataframe().reset_index(),
+        projected_forecast["effect"].mean(dim="number").to_dataframe().reset_index(),
         on="region",
     )
 
@@ -455,12 +463,72 @@ def _(plt, projected_forecast, projected_hist, sns):
         .mean()
     )
     _forecast = (
-        projected_forecast["effect"].sel(region=_target_region).groupby("time.month")
+        projected_forecast["effect"]
+        .mean(dim="number")
+        .sel(region=_target_region)
+        .groupby("time.month")
     )
 
     with sns.axes_style("whitegrid"):
         (_forecast - _climatology).plot(hue="age_cohort")
     plt.gca()
+    return
+
+
+@app.cell
+def _(
+    EFFECTS_URI,
+    ERA5_URI,
+    GAMMA_URI,
+    REGIONS_URI,
+    SOCIOECONOMICS_URI,
+    TAS_FORECAST_URI,
+    datetime,
+    projected_forecast,
+    projected_hist,
+    uuid,
+    xr,
+):
+    # Write output to storage.
+
+    _out = {
+        "forecast": projected_forecast,
+        "baseline": projected_hist,
+    }
+    _out_dt = xr.DataTree.from_dict(_out)
+
+    # Add metadata
+    _uuid = str(uuid.uuid4())
+    _datetime_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    _out_dt.attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uuid": _uuid,
+        "poreallas_description": "Projected temperature mortality effects",
+    }
+
+    _out_dt["forecast"].attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uuid": _uuid,
+        "poreallas_description": "Forecast ensemble projected temperature mortality effects",
+        "poreallas_temperature_uri": TAS_FORECAST_URI,
+        "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
+        "poreallas_model_parameters_uri": GAMMA_URI,
+        "poreallas_regions_uri": REGIONS_URI,
+    }
+
+    _out_dt["baseline"].attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uuid": _uuid,
+        "poreallas_description": "Baseline projected temperature mortality effects",
+        "poreallas_temperature_uri": ERA5_URI,
+        "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
+        "poreallas_model_parameters_uri": GAMMA_URI,
+        "poreallas_regions_uri": REGIONS_URI,
+    }
+
+    if EFFECTS_URI is not None:
+        _out_dt.to_zarr(EFFECTS_URI, consolidated=False)
     return
 
 
