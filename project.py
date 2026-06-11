@@ -232,6 +232,12 @@ def _(
     )
 
     fixed_beta = calculate_beta(beta_input).astype("float32").compute()
+
+    fixed_beta["beta"].attrs = {
+        "units": "deaths per 100,000 people",
+        "long_name": "Temperature mortality rate",
+    }
+
     fixed_beta
     return (fixed_beta,)
 

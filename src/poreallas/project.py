@@ -197,11 +197,6 @@ def calculate_beta(ds: xr.Dataset) -> xr.Dataset:
         idx_min=mmt_idx,
     )
 
-    beta.attrs = {
-        "units": "deaths per 100,000 people",
-        "long_name": "Temperature mortality rate",
-    }
-
     # Returns new dataset with beta added as new variable. Not modifying
     # original ds. Also ensure original data is passed through to projection.
     return ds.assign(beta=beta)
