@@ -31,9 +31,15 @@ Each of these variables can point to data in cloud storage or local storage.
 
 ### Projecting
 
-Projections can be run in the example projection notebook in `./project.py`. You will need access to the parsed input data described above before running the projection notebook.
+Projections can be run using the non-interactive script in `scripts/` or the example projection notebook in `./project.py`. You will need access to the parsed input data described above before running a projection.
 
-Setup and run the example projection notebook by running
+Run the projection script with
+
+```shell
+uv run scripts/05-project_effects.py
+```
+
+Alternatively, setup and run the example projection notebook by running
 
 ```shell
 uv run marimo edit project.py
