@@ -163,7 +163,7 @@ def main():
             ),
         },
         coords={
-            "age_cohort": (["age_cohort"], ["age1", "age2", "age3"]),
+            "age_cohort": (["age_cohort"], ["age0to4", "age5to64", "age65plus"]),
             "covarname": (["covarname"], ["1", "climtas", "loggdppc"]),
             "degree": (["degree"], np.arange(4) + 1),
             "sample": np.arange(N_SAMPLES),

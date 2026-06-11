@@ -358,7 +358,7 @@ def _(IMPACT_REGION_POLYGONS, geopandas, plt, projected_forecast):
 
     # Subset what we want to plot
     _plot_data = _polygons[
-        (_polygons["age_cohort"] == "age3") & (_polygons["time"].dt.month == 5)
+        (_polygons["age_cohort"] == "age65plus") & (_polygons["time"].dt.month == 5)
     ].to_crs("ESRI:54030")  # Convert to Robinson projection.
 
     ax = _plot_data.plot(
