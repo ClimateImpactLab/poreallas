@@ -180,7 +180,7 @@ def calculate_beta(ds: xr.Dataset) -> xr.Dataset:
     """
     Calculates mortality impact polynomial model's beta coefficients from gamma coefficients for the no-adaptation scenario.
 
-    Returns a copy of `ds` with new "beta" variable.
+    Returns a copy of `ds` with new "beta" and "mmt" variables, where "mmt" is the minimum-mortality temperature.
     """
     ds = ds.copy()
 
@@ -197,9 +197,10 @@ def calculate_beta(ds: xr.Dataset) -> xr.Dataset:
         idx_min=mmt_idx,
     )
 
-    # Returns new dataset with beta added as new variable. Not modifying
+    mmt = beta["tas_bin"].isel(tas_bin=mmt_idx)
+    # Returns new dataset with beta and mmt added as new variables. Not modifying
     # original ds. Also ensure original data is passed through to projection.
-    return ds.assign(beta=beta)
+    return ds.assign(beta=beta, mmt=mmt)
 
 
 mortality_effect_model = isku.build_projection_template(

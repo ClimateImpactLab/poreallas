@@ -165,6 +165,11 @@ def main():
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality rate",
     }
+    # Do beta allowing only hot deaths by 0-ing out everthing on the cold side of the minimum-mortality temperature.
+    fixed_beta["beta_hotonly"] = fixed_beta["beta"].where(
+        fixed_beta["tas_bin"] > fixed_beta["mmt"], other=0
+    )
+    fixed_beta["beta_hotonly"].attrs["long_name"] = "Hot temperature mortality rate"
 
     # Project mortality.
     # Start with forecast ensemble.
@@ -195,6 +200,34 @@ def main():
         "long_name": "Temperature mortality",
     }
 
+    # Now hot-only projection
+    forecast_input = (
+        xr.Dataset(
+            {
+                "histogram_tas": histogram_forecast_tas["histogram_tas"],
+                "beta": fixed_beta["beta_hotonly"],
+            }
+        )
+        .dropna(dim="region")
+        .chunk(
+            {
+                "region": "auto",  # "auto" is a sensible default.
+                "time": -1,
+                "tas_bin": -1,
+                "age_cohort": 1,
+                "number": 1,
+            },
+        )
+        .unify_chunks()
+    )
+    projected_forecast_hotonly = isku.project(
+        forecast_input, model=mortality_effect_model
+    ).compute()
+    projected_forecast_hotonly["effect"].attrs = {
+        "units": "deaths per 100,000 people",
+        "long_name": "Hot temperature mortality",
+    }
+
     # Now do the baseline period.
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
     hist_input = (
@@ -220,11 +253,39 @@ def main():
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality",
     }
+    # Now hot-only projection
+    hist_input = (
+        xr.Dataset(
+            {
+                "histogram_tas": histogram_hist_tas["histogram_tas"],
+                "beta": fixed_beta["beta_hotonly"],
+            }
+        )
+        .dropna(dim="region")
+        .chunk(
+            {
+                "region": "auto",  # "auto" is a sensible default.
+                "time": -1,
+                "tas_bin": -1,
+                "age_cohort": 1,
+            },
+        )
+        .unify_chunks()
+    )
+    projected_hist_hotonly = isku.project(
+        hist_input, model=mortality_effect_model
+    ).compute()
+    projected_hist_hotonly["effect"].attrs = {
+        "units": "deaths per 100,000 people",
+        "long_name": "Hot temperature mortality",
+    }
 
     # Collect everything and write to storage.
     _out = {
         "forecast": projected_forecast,
         "baseline": projected_hist,
+        "forecast_hotonly": projected_forecast_hotonly,
+        "baseline_hotonly": projected_hist_hotonly,
     }
     _out_dt = xr.DataTree.from_dict(_out)
 
@@ -252,6 +313,26 @@ def main():
         "poreallas_created_at": _datetime_now,
         "poreallas_uid": _uid,
         "poreallas_description": "Baseline projected temperature mortality effects",
+        "poreallas_temperature_uri": ERA5_URI,
+        "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
+        "poreallas_model_parameters_uri": GAMMA_URI,
+        "poreallas_regions_uri": REGIONS_URI,
+    }
+
+    _out_dt["forecast_hotonly"].attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uid": _uid,
+        "poreallas_description": "Forecast ensemble projected hot temperature mortality effects",
+        "poreallas_temperature_uri": TAS_FORECAST_URI,
+        "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
+        "poreallas_model_parameters_uri": GAMMA_URI,
+        "poreallas_regions_uri": REGIONS_URI,
+    }
+
+    _out_dt["baseline_hotonly"].attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uid": _uid,
+        "poreallas_description": "Baseline projected hot temperature mortality effects",
         "poreallas_temperature_uri": ERA5_URI,
         "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
         "poreallas_model_parameters_uri": GAMMA_URI,
