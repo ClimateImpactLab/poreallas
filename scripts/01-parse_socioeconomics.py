@@ -8,7 +8,7 @@ load_dotenv()
 # From Box account folder https://app.box.com/folder/377812758051 at path Methodology_and_Diagnostics/data/OUTPUT/ir_combined_SSP2_IIASA_v4.csv on 2026-06-09.
 # it uses Penn World Tables as observed data through 2023, then hands off to SSP from 2024 onwards.
 IN_CSV_URI = "./data/raw/ir_combined_SSP2_IIASA_v4.csv"
-OUT_ZARR_URI = os.getenv("POREALLAS_REGIONS_URI")
+OUT_ZARR_URI = os.getenv("POREALLAS_SOCIOECONOMICS_URI")
 
 df = (
     pd.read_csv(IN_CSV_URI)
