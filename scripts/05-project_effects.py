@@ -29,7 +29,7 @@ EFFECTS_URI = os.getenv("POREALLAS_EFFECTS_URI")
 
 
 def read_reanalysis(uri: str) -> xr.Dataset:
-    _ds = xr.open_dataset(uri)
+    _ds = xr.load_dataset(uri)
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -41,7 +41,7 @@ def read_reanalysis(uri: str) -> xr.Dataset:
 
 
 def read_forecast_ensemble(uri: str) -> xr.Dataset:
-    _ds = xr.open_dataset(uri).set_coords("valid_time")
+    _ds = xr.load_dataset(uri).set_coords("valid_time")
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -88,9 +88,9 @@ def read_forecast_ensemble(uri: str) -> xr.Dataset:
 
 
 def read_regions(uri: str) -> isku.GridWeightingRegions:
-    _region_weights = xr.open_dataset(uri)[
+    _region_weights = xr.load_dataset(uri)[
         ["lat", "lon", "region", "weight"]
-    ].load()  # Load only what we need.
+    ]  # Load only what we need.
     # Apparently in this version of xarray the `.load()` method type-hints it'll return a DataArray instead of a Dataset.
     # It is a Dataset (I checked). So telling ty to ignore it.
     # # TODO: send bug upstream?
@@ -99,11 +99,11 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
 
 
 def read_gammas(uri: str) -> xr.Dataset:
-    return xr.open_dataset(uri)
+    return xr.load_dataset(uri)
 
 
 def read_socioeconomics(uri: str) -> xr.Dataset:
-    return xr.open_dataset(uri)
+    return xr.load_dataset(uri)
 
 
 def main():
