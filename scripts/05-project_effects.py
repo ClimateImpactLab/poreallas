@@ -41,22 +41,15 @@ def read_reanalysis(uri: str) -> xr.Dataset:
 
 
 def read_forecast_ensemble(uri: str) -> xr.Dataset:
-    _ds = xr.load_dataset(uri).set_coords("valid_time")
+    _ds = xr.load_dataset(uri)
 
     # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
     _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
-
-    _ds = _ds.rename(
-        {
-            "valid_time": "time",
-            "latitude": "lat",
-            "longitude": "lon",
-        }
-    )
-    _ds = _ds.swap_dims({"forecast_period": "time"}).squeeze(drop=True)
+    _ds = _ds.rename({"latitude": "lat", "longitude": "lon"})
     _ds = _ds.chunk("auto")
 
+    # TODO: We prob don't want this here. Should be in earlier cleaning. Here for backwards compatibility.
     # Drop months without required number of obs. Forecast ensemble is for a fixed number of days so we expect to usually trim off the last month of the forecast if it is ragged and missing days beyond a threshold.
     _dt_dim = "time"
     _n_initial = _ds[_dt_dim].size
@@ -341,6 +334,7 @@ def main():
 
     if EFFECTS_URI is not None:
         _out_dt.to_zarr(EFFECTS_URI, consolidated=False)
+        print(f"Effects written to {EFFECTS_URI}")
 
 
 if __name__ == "__main__":

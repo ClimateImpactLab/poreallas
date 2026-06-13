@@ -21,7 +21,10 @@ from dask_gateway import GatewayCluster
 
 load_dotenv()
 
-OUT_ZARR = os.getenv("POREALLAS_TAS_FORECAST_URI")
+START_YEAR = 1993  # Need at least 1993-2016 to match Copernicus CDS hindcast period for seasonal forecasts.
+STOP_YEAR = 2025
+TARGET_REGRID_URI = "s51_hcm.nc"
+OUT_ZARR = os.environ["POREALLAS_ERA5_URI"]
 
 
 JUPYTER_IMAGE = os.environ.get("JUPYTER_IMAGE")
@@ -55,11 +58,11 @@ ar_full_37_1h = ds.sel(
 )
 # This is multiple TiB.
 
-# Want climatology so last 30 years.
+# Want climatology so last 30 years-ish.
 # Chunk so doesn't read all data in at once.
 clipped_window = (
     ar_full_37_1h["2m_temperature"]
-    .sel(time=slice("1995", "2025"))
+    .sel(time=slice(str(START_YEAR), str(STOP_YEAR)))
     .chunk({"time": "auto", "latitude": -1, "longitude": -1})
 )
 # This is ~1 TiB.
@@ -80,7 +83,7 @@ clipped_window_daily = clipped_window_daily.chunk(
 
 # Using the S51 seasonal monthly seasonal hindcast ensemble mean from copernicus as the target grid for our regrid...
 # Selecting so only have coords for latitude and longitude for regridding.
-target = xr.open_dataset("s51_hcm.nc").isel(
+target = xr.open_dataset(TARGET_REGRID_URI).isel(
     {"forecast_reference_time": 0, "forecastMonth": 0}, drop=True
 )
 regridder = xe.Regridder(clipped_window_daily, target, method="bilinear", periodic=True)
