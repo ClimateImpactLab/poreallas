@@ -171,8 +171,8 @@ def _calculate_shifted_baseline_beta(
 
 
 def _mortality_effects_model(ds: xr.Dataset) -> xr.Dataset:
-    # dot product of betas and t_bins for effect.
-    effect = (ds["histogram_tas"] * ds["beta"]).sum(dim="tas_bin")
+    # dot product of histogram_tas and betas. i.e., multiply together and sum across tas_bins to get a mortality effect.
+    effect = xr.dot(ds["histogram_tas"], ds["beta"], dim="tas_bin", optimize=True)
     return xr.Dataset({"effect": effect.astype("float32")})
 
 
