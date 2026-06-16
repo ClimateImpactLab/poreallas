@@ -100,7 +100,7 @@ def climtas():
 
 def test_mortality_effect_model_gamma_mean(gamma, loggdppc, histogram_tas, climtas):
     """
-    Test that mortality_effect_model_gamma runs through isku.project.
+    Test that mortality_effect_model + calculate_beta runs through isku.project.
      Checks for generally correct output using mean gamma as input.
     """
     # Build up what we expect output to be.
@@ -138,7 +138,7 @@ def test_mortality_effect_model_gamma_mean(gamma, loggdppc, histogram_tas, climt
 
 def test_mortality_effect_model_gamma_sampled(gamma, loggdppc, histogram_tas, climtas):
     """
-    Test that mortality_effect_model_gamma runs through isku.project.
+    Test that mortality_effect_model + calculate_beta runs through isku.project.
     Checks for generally correct output using sampled gamma as input.
     """
     # Build up what we expect output to be.
