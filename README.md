@@ -1,6 +1,6 @@
 # poreallas
 
-Mortality rate projection using seasonal forecast ensembles.
+Mortality rate projection using seasonal forecast ensembles. Loosely based on Carleton et al 2022 (https://doi.org/10.3386/w27599).
 
 > [!WARNING]
 > This is an incomplete toy prototype. This is not suitable for a production environment.
