@@ -41,5 +41,9 @@ jobs:
         run: uv run ty check
 
       - name: Test with pytest
-        run: uv run pytest -vv
+        run: uv run pytest -vv --cov-report term-missing --cov-report xml --cov poreallas
 
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
