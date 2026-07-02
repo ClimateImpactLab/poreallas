@@ -1,5 +1,8 @@
 # poreallas
 
+[![Test Python Package](https://github.com/ClimateImpactLab/poreallas/actions/workflows/python-test.yaml/badge.svg)](https://github.com/ClimateImpactLab/poreallas/actions/workflows/python-test.yaml)
+[![codecov](https://codecov.io/gh/ClimateImpactLab/poreallas/graph/badge.svg?token=3VL5VTWGNV)](https://codecov.io/gh/ClimateImpactLab/poreallas)
+
 Mortality rate projection using seasonal forecast ensembles. Loosely based on Carleton et al 2022 (https://doi.org/10.3386/w27599).
 
 > [!WARNING]
