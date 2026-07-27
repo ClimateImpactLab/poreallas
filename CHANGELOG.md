@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
--
+### Added
+
+- Add prototype scripts for GMFD bias adjustment to ERA5 baseline and forecast ensemble projects. ([@kemccusker](https://github.com/kemccusker), [PR#13](https://github.com/ClimateImpactLab/poreallas/pull/13))
 
 ## [0.1.0] - 2026-07-24
 
