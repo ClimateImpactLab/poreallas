@@ -44,6 +44,8 @@ uv run scripts/05-project_effects.py
 
 from the root of this repository.
 
+Alternatively, running `uv run scripts/05-project_effects_marimo.py` will project with a prototype GMFD bias-adjustment.
+
 ### Data and parsing
 
 If you do not already have access to parsed input data you will need to download and clean input data, running the scripts in `./scripts/` in ordered sequence. This creates and populates input data in the `./data/` directory. Note this requires downloading and processing a significant amount of data. Some steps will require access to a daskhub cluster. This will be noted in script comments and documentation.
