@@ -54,7 +54,7 @@ def _(os):
     GAMMA_URI = os.environ["POREALLAS_GAMMA_URI"]
     SOCIOECONOMICS_URI = os.environ["POREALLAS_SOCIOECONOMICS_URI"]
     REGIONS_URI = os.environ["POREALLAS_REGIONS_URI"]
-    EFFECTS_URI = "gs://poreallas-public-20260605/v20260702/effects_net_hot_cold.zarr"#os.getenv("POREALLAS_EFFECTS_URI")
+    EFFECTS_URI = "gs://poreallas-public-20260605/v20260702/effects_net_hot_cold.zarr"  # os.getenv("POREALLAS_EFFECTS_URI")
     return (
         EFFECTS_URI,
         ERA5_URI,
@@ -80,9 +80,11 @@ def _(isku, np, xr):
 
     #     return _tas_daily_avg.to_dataset().astype("float32")
 
-
     def read_reanalysis(uri: str) -> xr.Dataset:
-        _ds = xr.load_dataset(uri, storage_options={"token": "anon"},)
+        _ds = xr.load_dataset(
+            uri,
+            storage_options={"token": "anon"},
+        )
 
         # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
         _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -93,7 +95,10 @@ def _(isku, np, xr):
         return _ds
 
     def read_forecast_ensemble(uri: str) -> xr.Dataset:
-        _ds = xr.load_dataset(uri, storage_options={"token": "anon"},)
+        _ds = xr.load_dataset(
+            uri,
+            storage_options={"token": "anon"},
+        )
 
         # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
         _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
@@ -132,20 +137,27 @@ def _(isku, np, xr):
         return _ds
 
     def read_regions(uri: str) -> isku.GridWeightingRegions:
-        _region_weights = xr.load_dataset(uri, storage_options={"token": "anon"},)[
-            ["lat", "lon", "region", "weight"]
-        ]  # Load only what we need.
+        _region_weights = xr.load_dataset(
+            uri,
+            storage_options={"token": "anon"},
+        )[["lat", "lon", "region", "weight"]]  # Load only what we need.
         # Apparently in this version of xarray the `.load()` method type-hints it'll return a DataArray instead of a Dataset.
         # It is a Dataset (I checked). So telling ty to ignore it.
         # # TODO: send bug upstream?
-        regions = isku.GridWeightingRegions(_region_weights)  # ty: ignore[invalid-argument-type]
+        regions = isku.GridWeightingRegions(_region_weights)
         return regions
 
     def read_gammas(uri: str) -> xr.Dataset:
-        return xr.load_dataset(uri, storage_options={"token": "anon"},)
+        return xr.load_dataset(
+            uri,
+            storage_options={"token": "anon"},
+        )
 
     def read_socioeconomics(uri: str) -> xr.Dataset:
-        return xr.load_dataset(uri, storage_options={"token": "anon"},)
+        return xr.load_dataset(
+            uri,
+            storage_options={"token": "anon"},
+        )
 
     return read_forecast_ensemble, read_reanalysis, read_regions
 
@@ -169,8 +181,8 @@ def _(
 
 @app.cell
 def _(ERA5_URI, TAS_FORECAST_URI, forecast_ensemble, reanalysis, xr):
-    bias_adjust = True # bias adjust to GMFD
-    save_adjusted = True # save the bias adjusted reanalysis and forecast data to gcp
+    bias_adjust = True  # bias adjust to GMFD
+    save_adjusted = True  # save the bias adjusted reanalysis and forecast data to gcp
     if bias_adjust:
         # here we want to delta shift both era5 and the forecast to GMFD I think
         era5file = "../tas_era5_1deg_monthly_climo_1980-2010.nc"
@@ -182,34 +194,41 @@ def _(ERA5_URI, TAS_FORECAST_URI, forecast_ensemble, reanalysis, xr):
         gmfd["longitude"] = (gmfd["longitude"] + 180) % 360 - 180
 
         bias = gmfd - era5
-        bias = bias.rename({"latitude":"lat","longitude": "lon"})
+        bias = bias.rename({"latitude": "lat", "longitude": "lon"})
 
         # bias = bias.assign_coords({"month":reanalysis.time.dt.month})
-        # want to match GMFD so if ERA5 is warmer, need to make it cooler. 
-        # This means delta for gmfd-era5 is negative and can add it to era5 to cool era5 down. 
+        # want to match GMFD so if ERA5 is warmer, need to make it cooler.
+        # This means delta for gmfd-era5 is negative and can add it to era5 to cool era5 down.
         # So bias = gmfd - era5, and then adjusted = forecast + bias. And era5 + bias
         reanalysis_adjusted = reanalysis + bias.sel(month=reanalysis.time.dt.month)
 
-        forecast_ensemble_adjusted = forecast_ensemble + bias.sel(month=forecast_ensemble.time.dt.month)
+        forecast_ensemble_adjusted = forecast_ensemble + bias.sel(
+            month=forecast_ensemble.time.dt.month
+        )
 
         if save_adjusted:
             reanalysis_adjusted.attrs.update(
-                {"Description": "ERA5 adjusted to GMFD using a monthly climatology difference from ERA5-GMFD over 1980-2010.",
-                "reanalysis data": ERA5_URI,
-                "forecast_ensemble_data": TAS_FORECAST_URI}
+                {
+                    "Description": "ERA5 adjusted to GMFD using a monthly climatology difference from ERA5-GMFD over 1980-2010.",
+                    "reanalysis data": ERA5_URI,
+                    "forecast_ensemble_data": TAS_FORECAST_URI,
+                }
             )
 
             reanalysis_adjusted.to_zarr("reanalysis_bias_adjusted_to_GMFD.zarr")
 
             forecast_ensemble_adjusted.attrs.update(
-                {"Description": "Seasonal forecast ensemble adjusted to GMFD using a monthly climatology difference from ERA5-GMFD over 1980-2010.",
-                "reanalysis data": ERA5_URI,
-                "forecast_ensemble_data": TAS_FORECAST_URI,
-                 "Bias adjustment": "TODO add this step to poreallas. Bias adjustment delta calculated on notebooks.cilresearch.org. https://notebooks.cilresearch.org/user/kemccusker/lab/tree/ClimateImpactLab/bias_adjust_ERA5_to_GMFD_monthly_for_ENSO_work.ipynb"
+                {
+                    "Description": "Seasonal forecast ensemble adjusted to GMFD using a monthly climatology difference from ERA5-GMFD over 1980-2010.",
+                    "reanalysis data": ERA5_URI,
+                    "forecast_ensemble_data": TAS_FORECAST_URI,
+                    "Bias adjustment": "TODO add this step to poreallas. Bias adjustment delta calculated on notebooks.cilresearch.org. https://notebooks.cilresearch.org/user/kemccusker/lab/tree/ClimateImpactLab/bias_adjust_ERA5_to_GMFD_monthly_for_ENSO_work.ipynb",
                 }
             )
 
-            forecast_ensemble_adjusted.to_zarr("forecast_ensemble_bias_adjusted_to_GMFD.zarr")
+            forecast_ensemble_adjusted.to_zarr(
+                "forecast_ensemble_bias_adjusted_to_GMFD.zarr"
+            )
     return bias_adjust, forecast_ensemble_adjusted, reanalysis_adjusted
 
 
@@ -259,7 +278,7 @@ def _(
             template=make_tas_monthly_histogram,
             regions=regions,
         )
-    else:    
+    else:
         # Transform gridded data, extracting regional data needed for projections.
         histogram_hist_tas = isku.extract_regions(
             reanalysis,
@@ -303,7 +322,7 @@ def _(calculate_beta, climtas, gammas, histogram_forecast_tas, loggdppc, xr):
                 "gamma": gammas["gamma_mean"],
             }
         )
-        .dropna(dim="region") # TODO: check these nan values. should they be nan?
+        .dropna(dim="region")  # TODO: check these nan values. should they be nan?
         .chunk(
             {
                 "region": "auto",  # "auto" is a sensible default.
@@ -344,7 +363,7 @@ def _(fixed_beta, histogram_forecast_tas, isku, mortality_effect_model, xr):
                 "beta": fixed_beta["beta"],
             }
         )
-        .dropna(dim="region") # TODO check the nans are expected
+        .dropna(dim="region")  # TODO check the nans are expected
         .chunk(
             {
                 "region": "auto",  # "auto" is a sensible default.
@@ -524,8 +543,10 @@ def _(fixed_beta, histogram_hist_tas, isku, mortality_effect_model, xr):
 
 @app.cell
 def _(EFFECTS_URI):
-    #EFFECTS_URI_LOCAL = "local_output/v20260702/effects_net_hot_cold.zarr"
-    EFFECTS_URI_LOCAL = "local_output/v20260702/effects_net_hot_cold_gmfd_biasadjusted.zarr"
+    # EFFECTS_URI_LOCAL = "local_output/v20260702/effects_net_hot_cold.zarr"
+    EFFECTS_URI_LOCAL = (
+        "local_output/v20260702/effects_net_hot_cold_gmfd_biasadjusted.zarr"
+    )
 
     print(EFFECTS_URI)
     print(EFFECTS_URI_LOCAL)
@@ -559,7 +580,8 @@ def _(
         "forecast_hotonly": projected_forecast_hotonly,
         "baseline_hotonly": projected_hist_hotonly,
         "forecast_coldonly": projected_forecast_coldonly,
-        "baseline_coldonly": projected_hist_coldonly,}
+        "baseline_coldonly": projected_hist_coldonly,
+    }
     _out_dt = xr.DataTree.from_dict(_out)
 
     # Add metadata
@@ -638,8 +660,10 @@ def _(
         try:
             _out_dt.to_zarr(EFFECTS_URI, consolidated=False)
             print(f"Effects written to {EFFECTS_URI}")
-        except Exception as e:
-            print("Caught Exception. You probably don't have permissions to write to the bucket")
+        except Exception:
+            print(
+                "Caught Exception. You probably don't have permissions to write to the bucket"
+            )
 
     _out_dt
     return
