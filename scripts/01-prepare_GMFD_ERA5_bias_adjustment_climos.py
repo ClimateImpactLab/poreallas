@@ -35,8 +35,9 @@ def _():
     import matplotlib.pyplot as plt
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
+    import xesmf as xe
 
-    return ccrs, cfeature, np, plt, xr
+    return ccrs, cfeature, np, plt, xe, xr
 
 
 @app.cell
