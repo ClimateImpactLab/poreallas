@@ -45,8 +45,8 @@ mfdataset_kwargs = dict(
     compat="no_conflicts",
 )
 s51 = (
-    xr.open_mfdataset(target_tasmax_paths, **mfdataset_kwargs)["mx2t24"]
-    + xr.open_mfdataset(target_tasmin_paths, **mfdataset_kwargs)["mn2t24"]
+    xr.open_mfdataset(target_tasmax_paths, **mfdataset_kwargs)["mx2t24"]  # type: ignore[ty:invalid-argument-type]
+    + xr.open_mfdataset(target_tasmin_paths, **mfdataset_kwargs)["mn2t24"]  # type: ignore[ty:invalid-argument-type]
 ) / 2
 s51.name = "tas"
 s51 = s51.to_dataset()
