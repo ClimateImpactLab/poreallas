@@ -11,10 +11,10 @@ import os
 import uuid
 
 import dask
-from dask_gateway import GatewayCluster
+from dask_gateway import GatewayCluster  # type: ignore[ty:unresolved-import]
 from dotenv import load_dotenv
 import xarray as xr
-import xesmf as xe
+import xesmf as xe  # type: ignore[ty:unresolved-import]
 
 load_dotenv()
 
