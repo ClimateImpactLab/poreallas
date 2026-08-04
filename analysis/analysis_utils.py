@@ -132,7 +132,7 @@ def compute_impact(projected, socioeconomics, baseline_period, ensemble = False,
 
 def xarray_to_gpd(data, polygons, crs = 'ESRI:54030'):
     _polygons_data = polygons.merge(
-        data.to_dataframe().reset_index(),
+        data.to_dataframe(name=data.name or "value").reset_index(),
         on="region",
         )
 
