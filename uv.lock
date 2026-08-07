@@ -635,7 +635,7 @@ name = "eccodeslib"
 version = "2.47.1.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "eckitlib" },
+    { name = "eckitlib", marker = "sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ac/ed/0a9e9b8d42f5c3fa90a46329f9cbdab5e65395aad0b9920f6077d85dc37f/eccodeslib-2.47.1.20-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:b039b0d0bec9dfbb31ed963c31ac3e76da6f868d21a4ee703b8f6bd6563c6b35", size = 8904210, upload-time = "2026-05-27T12:26:52.362Z" },
