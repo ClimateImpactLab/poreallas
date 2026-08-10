@@ -317,7 +317,7 @@ def plot_monthly(gdf, col, sup_title="", save_title="", cm='bwr', cbar_label=Non
     for ax in axes.flat[len(months):]:
         ax.set_axis_off()
 
-    _, _, sm, ticks = build_colormap(gdf, col, cm=cm, vmin=vmin, vmax=vmax)
+    _, _, sm, ticks, step = build_colormap(gdf, col, cm=cm, vmin=vmin, vmax=vmax)
     fig.colorbar(sm, ax=axes.ravel().tolist(), location='right', shrink=0.6, ticks=ticks, label=cbar_label)
 
     fig.suptitle(sup_title, fontsize=14)
