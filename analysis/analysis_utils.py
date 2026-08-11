@@ -49,7 +49,10 @@ def pop_weight_sum(da, socioeconomics, rate=True, age_weight=True, cohort = 'age
         
     return regional_sum
 
-def compute_impact(projected, socioeconomics, baseline_period, ensemble = False, hotonly = False, rate = False, age_weight = True, cohort = 'age65plus'):
+def compute_impact(projected, socioeconomics, baseline_period, 
+                   chunks = {'number':-1, 'sample': -1, 'region': 'auto'},
+                   ensemble = False, hotonly = False, 
+                   rate = False, age_weight = True, cohort = 'age65plus'):
     """
     Calculates the difference between forecast and baseline period mortality effects (deaths/100k or total deaths)
     (monthly climatology), then applies population-weighted for age cohorts.
@@ -82,26 +85,51 @@ def compute_impact(projected, socioeconomics, baseline_period, ensemble = False,
         by pop_weight_sum.
     """
 
-    if hotonly:
+    if hotonly == 'hotonly':
         #Hotonly
         _baseline = (
-            projected["/baseline_hotonly"]["effect"]
+            projected["/baseline_hotonly"]["effect"].chunk({'region': 'auto'})
             .sel(time=baseline_period)
             .groupby("time.month")
             .mean()
         )
         if ensemble:
             _forecast = (
-                projected["/forecast_hotonly"]["effect"].groupby("time.month").mean()
+                projected["/forecast_hotonly"]["effect"]
+                .chunk(chunks)
+                .groupby("time.month").mean()
             )
         else:
             _forecast = (
-                projected["/forecast_hotonly"]["effect"].mean(dim="number").groupby("time.month").mean()
+                projected["/forecast_hotonly"]["effect"]
+                .chunk(chunks)
+                .mean(dim="number").groupby("time.month").mean()
+            )
+    elif hotonly == 'coldonly':
+        #Coldonly
+        _baseline = (
+            projected["/baseline_coldonly"]["effect"].chunk({'region': 'auto'})
+            .sel(time=baseline_period)
+            .groupby("time.month")
+            .mean()
+        )
+        if ensemble:
+            _forecast = (
+                projected["/forecast_coldonly"]["effect"]
+                .chunk(chunks)
+                .groupby("time.month").mean()
+            )
+        else:
+            _forecast = (
+                projected["/forecast_coldonly"]["effect"]
+                .chunk(chunks)
+                .mean(dim="number").groupby("time.month").mean()
             )
     else:
         ## Net
         _baseline = (
             projected["/baseline"]["effect"]
+            .chunk({'region': 'auto'})
             .sel(time=baseline_period)
             .groupby("time.month")
             .mean()
@@ -109,11 +137,15 @@ def compute_impact(projected, socioeconomics, baseline_period, ensemble = False,
         if ensemble:
         #Maintain ensmble dimension
             _forecast = (
-                projected["/forecast"]["effect"].groupby("time.month").mean()
+                projected["/forecast"]["effect"]
+                .chunk(chunks)
+                .groupby("time.month").mean()
             )
         else:
             _forecast = (
-                projected["/forecast"]["effect"].mean(dim="number").groupby("time.month").mean()
+                projected["/forecast"]["effect"]
+                .chunk(chunks)
+                .mean(dim="number").groupby("time.month").mean()
             )
 
     # Compute Impact
@@ -149,16 +181,28 @@ def compute_stats(da, dim = 'number', polygon = None):
 
     mean = da.mean(dim=dim)
     std = da.std(dim = dim)
-    p10 = da.quantile(0.10, dim= dim)
-    p90 = da.quantile(0.90, dim=dim)
-    prange = p90 - p10
+    min = da.min(dim = dim)
+    max = da.max(dim = dim)
+    p = da.quantile([0.10, 0.17, 0.5, 0.83, 0.9], dim= dim)
+
+    p10 = p.sel(quantile = 0.10, drop = True)
+    p17 = p.sel(quantile = 0.17, drop = True)
+    p50 = p.sel(quantile = 0.50, drop = True)
+    p83 = p.sel(quantile = 0.83, drop = True)
+    p90 = p.sel(quantile = 0.90, drop = True)
+    likely_range = p83 - p17
 
     ds_out = xr.Dataset({
+        "median" : p50,
+        "p17": p17,
+        "p83": p83,
+        "likely_range_IPCC": likely_range,
         "mean": mean,
         "std": std,
-        "p10": p10.drop_vars("quantile"),
-        "p90": p90.drop_vars("quantile"),
-        "range": prange.drop_vars("quantile", errors="ignore"),
+        "min": min,
+        "max": max,
+        "p10": p10,
+        "p90": p90,
     })
     if polygon is not None:
         _polygons_num = polygon.merge(ds_out
@@ -168,6 +212,37 @@ def compute_stats(da, dim = 'number', polygon = None):
         return _polygons_num
     return ds_out
 
+###Output Functions ###
+def make_csv(effect, socioeconomics, baseline_period, ensemble = True, hotonly = "net", rate = False, age_weight = True):
+    rate_l = "rate" if rate else "total"
+
+    #Compute Impact from Effect
+    impact = compute_impact(effect, socioeconomics, 
+                                           ensemble = ensemble, baseline_period=baseline_period, 
+                                           hotonly = hotonly, rate = rate, 
+                                           age_weight = age_weight)
+
+    # Monthly Stats
+    stat_cols = ['median', 'p17', 'p83', 'likely_range_IPCC', 
+                 'mean','std', 
+                 'min', 'max', 
+                 'p10', 'p90']
+    _polygons_impact = compute_stats(impact, dim=["number", "sample"], polygon=_polygons)
+    wide = _polygons_impact.pivot(index=['region', 'ISO'], columns="month", values=stat_cols)
+    wide.columns = [f"month {m} {stat}" for stat, m in wide.columns]
+    wide = wide.reset_index()
+    wide.to_csv(f"2608_{hotonly}_{rate_l}_all_stats.csv", index = False)
+
+    # 6-month stats
+    mo6 = impact.sum(dim = 'month')
+    _polygons_mo6 = compute_stats(mo6, dim=["number", "sample"], polygon=_polygons)
+    mo6_out = _polygons_mo6[["region", "ISO", 
+                             'median', 'p17', 'p83', 'likely_range_IPCC', 
+                             'mean','std', 
+                             'min', 'max', 
+                             'p10', 'p90']]
+    mo6_out.to_csv(f"2608_{hotonly}_6mo_{rate_l}_all_stats.csv", index = False)
+    return
 ##### Plotting Functions #####
 from functools import lru_cache
 
