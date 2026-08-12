@@ -213,7 +213,7 @@ def compute_stats(da, dim = 'number', polygon = None):
     return ds_out
 
 ###Output Functions ###
-def make_csv(effect, socioeconomics, baseline_period, ensemble = True, hotonly = "net", rate = False, age_weight = True):
+def make_csv(effect, socioeconomics, polygon, baseline_period, ensemble = True, hotonly = "net", rate = False, age_weight = True):
     rate_l = "rate" if rate else "total"
 
     #Compute Impact from Effect
@@ -227,7 +227,7 @@ def make_csv(effect, socioeconomics, baseline_period, ensemble = True, hotonly =
                  'mean','std', 
                  'min', 'max', 
                  'p10', 'p90']
-    _polygons_impact = compute_stats(impact, dim=["number", "sample"], polygon=_polygons)
+    _polygons_impact = compute_stats(impact, dim=["number", "sample"], polygon = polygon)
     wide = _polygons_impact.pivot(index=['region', 'ISO'], columns="month", values=stat_cols)
     wide.columns = [f"month {m} {stat}" for stat, m in wide.columns]
     wide = wide.reset_index()
@@ -235,7 +235,7 @@ def make_csv(effect, socioeconomics, baseline_period, ensemble = True, hotonly =
 
     # 6-month stats
     mo6 = impact.sum(dim = 'month')
-    _polygons_mo6 = compute_stats(mo6, dim=["number", "sample"], polygon=_polygons)
+    _polygons_mo6 = compute_stats(mo6, dim=["number", "sample"], polygon=polygon)
     mo6_out = _polygons_mo6[["region", "ISO", 
                              'median', 'p17', 'p83', 'likely_range_IPCC', 
                              'mean','std', 
@@ -243,6 +243,34 @@ def make_csv(effect, socioeconomics, baseline_period, ensemble = True, hotonly =
                              'p10', 'p90']]
     mo6_out.to_csv(f"2608_{hotonly}_6mo_{rate_l}_all_stats.csv", index = False)
     return
+
+def build_stats_text(da, dim=None, fmt="{:.2f}"):
+    stats = {
+        "mean": float(da.mean(dim=dim)),
+        "std": float(da.std(dim=dim)),
+        "min": float(da.min(dim=dim)),
+        "max": float(da.max(dim=dim)),
+    }
+    return "\n".join(f"{k}: {fmt.format(v)}" for k, v in stats.items())
+
+
+def add_stats_annotation(text, ax, loc="upper left"):
+    loc_map = {
+        "upper right": (0.975, 1.05, "top", "right"),
+        "upper left": (0.005, 1.05, "top", "left"),
+        "lower right": (0.975, 0.025, "bottom", "right"),
+        "lower left": (0.025, 0.025, "bottom", "left"),
+    }
+    x, y, va, ha = loc_map[loc]
+
+    return ax.annotate(
+        text,
+        xy=(x, y),
+        xycoords="axes fraction",
+        ha=ha,
+        va=va,
+        fontsize=9,
+    )
 ##### Plotting Functions #####
 from functools import lru_cache
 
@@ -252,17 +280,26 @@ def _get_land(crs):
     land = gpd.read_file(geodatasets.get_path('naturalearth land'))
     return land.cx[:, -60:90].to_crs(crs)
 
-#Monthly Effects#
-def get_step(absmax, min_bins=2, max_bins=8):
-    magnitude = 10 ** np.floor(np.log10(absmax))
-    for _ in range(3):  
-        for step in [1, 2, 2.5, 5, 10]:
+def get_step(target_range, min_bins=2, max_bins=8):
+    magnitude = 10 ** np.floor(np.log10(target_range))
+    for _ in range(3):
+        for step in [1, 2, 5, 10]:
             candidate = step * magnitude
-            n_bins = absmax / candidate
+            n_bins = target_range / candidate
             if min_bins <= n_bins <= max_bins:
                 return candidate
         magnitude /= 10
     return magnitude * 10
+
+def nice_step(target):
+    """Snap an arbitrary step size to the nearest round value (1, 2, 5, or 10 x 10**n)."""
+    magnitude = 10 ** np.floor(np.log10(target))
+    options = np.array([1, 2, 5, 10]) * magnitude
+    return options[np.argmin(np.abs(options - target))]
+
+def round_bounds(bounds, step):
+    """Remove floating-point drift so bounds land exactly on multiples of step/2."""
+    return np.round(bounds * 2 / step) * step / 2
 
 def get_ticks(bounds, step=None, max_ticks=10, symmetric=False):
     if symmetric:
@@ -302,8 +339,9 @@ def build_colormap(gdf=None, col=None, cm='bwr', vmin=None, vmax=None, n_colors=
         else:
             absmax = math.ceil(gdf[col].abs().quantile(0.95))
 
-        step = (2 * absmax) / n_colors if n_colors else get_step(2 * absmax)
+        step = nice_step((2 * absmax) / n_colors) if n_colors else get_step(2 * absmax)
         bounds = np.arange(-np.ceil(absmax / step) * step - step / 2, np.ceil(absmax / step) * step + step, step)
+        bounds = round_bounds(bounds, step)
         cmap, norm, sm = make_cmap(bounds, cm=cm)
     else:
         # Sequential, uses vmin/vmax (or data min/max) directly, no center-forcing
@@ -313,8 +351,9 @@ def build_colormap(gdf=None, col=None, cm='bwr', vmin=None, vmax=None, n_colors=
             lo = vmin if vmin is not None else gdf[col].min()
             hi = vmax if vmax is not None else gdf[col].max()
 
-        step = (hi - lo) / n_colors if n_colors else get_step(hi - lo)
+        step = nice_step((hi - lo) / n_colors) if n_colors else get_step(hi - lo)
         bounds = np.arange(np.floor(lo / step) * step, np.ceil(hi / step) * step + step, step)
+        bounds = round_bounds(bounds, step)
         cmap = plt.get_cmap(cm, len(bounds) - 1)
         norm = mcolors.BoundaryNorm(bounds, cmap.N)
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -329,6 +368,7 @@ land = gpd.read_file(geodatasets.get_path('naturalearth land'))
 def plot_single(gdf, col, sup_title="", save_title="", cm='bwr', 
                 cbar_label=None, vmin=None, vmax=None, edgecolor=None, linewidth=0, 
                 ax=None, cbar_location='right', colorbar=True, n_colors=None,
+                annotation = None,
                 target_crs = 'ESRI:54030'):
 
     if gdf.crs is None:
@@ -368,17 +408,28 @@ def plot_single(gdf, col, sup_title="", save_title="", cm='bwr',
             label.set_rotation(45)
             label.set_ha('right')
 
+    if annotation:
+        add_stats_annotation(annotation, ax)
+        
     if standalone and save_title:
         fig.savefig(save_title, dpi=600, bbox_inches="tight")
     return ax
 
-def plot_monthly(gdf, col, sup_title="", save_title="", cm='bwr', cbar_label=None, vmin=None, vmax=None, edgecolor=None, n_colors=None, linewidth=0):
+def plot_monthly(gdf, col, sup_title="", save_title="", 
+                 cm='bwr', cbar_label=None, vmin=None, vmax=None, 
+                 edgecolor=None, n_colors=None, linewidth=0,
+                 month_order=None):
     if vmin is None:
         vmin = -gdf[col].abs().quantile(0.95)
     if vmax is None:
         vmax = gdf[col].abs().quantile(0.95)
 
-    months = sorted(gdf['month'].unique())
+    if month_order is None:
+        months = sorted(gdf['month'].unique())
+    else:
+        present = set(gdf['month'].unique())
+        months = [m for m in month_order if m in present]
+
     fig, axes = plt.subplots(2, 3, figsize=(16, 6))
 
     for ax, month in zip(axes.flat, months):
@@ -392,7 +443,7 @@ def plot_monthly(gdf, col, sup_title="", save_title="", cm='bwr', cbar_label=Non
     for ax in axes.flat[len(months):]:
         ax.set_axis_off()
 
-    _, _, sm, ticks, step = build_colormap(gdf, col, cm=cm, vmin=vmin, vmax=vmax)
+    cmap, norm, sm, ticks, step = build_colormap(gdf, col, cm=cm, vmin=vmin, vmax=vmax, n_colors=n_colors)
     fig.colorbar(sm, ax=axes.ravel().tolist(), location='right', shrink=0.6, ticks=ticks, label=cbar_label)
 
     fig.suptitle(sup_title, fontsize=14)
@@ -403,6 +454,7 @@ def plot_monthly(gdf, col, sup_title="", save_title="", cm='bwr', cbar_label=Non
 def plot_aggregate(gdf, col, agg='sum', rate=True, sup_title="", save_title="", cm='bwr',
                    cbar_label=None, vmin=None, vmax=None, edgecolor=None, linewidth=0, 
                     ax=None, cbar_location='right', colorbar=True, n_colors=None,
+                    annotation = None,
                     target_crs = 'ESRI:54030'):
     
     annual = gdf.groupby(['region', 'geometry'], as_index=False)[col].agg(agg)
@@ -411,6 +463,7 @@ def plot_aggregate(gdf, col, agg='sum', rate=True, sup_title="", save_title="", 
     ax = plot_single(annual, col,cm=cm, ax=ax, cbar_label=cbar_label, 
                       vmin=vmin, vmax=vmax, edgecolor=edgecolor, linewidth=linewidth, 
                     cbar_location=cbar_location, colorbar=colorbar,n_colors=n_colors,
+                    annotation=annotation,
                     target_crs = target_crs)
 
     fig = ax.figure

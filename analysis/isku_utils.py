@@ -41,6 +41,8 @@ def grid_to_ir(data, savefile = None):
     if 'longitude' in data.dims:
         if data['longitude'].min() >= 0:
             data = lon_adjust(data)
+        else:
+            data = lon_adjust(data, roll = False)
     regions = read_regions(REGIONS_URI)
     data_ir = isku.extract_regions(
         data,
@@ -52,8 +54,9 @@ def grid_to_ir(data, savefile = None):
         data_ir.to_zarr(f"{savefile}.zarr")
     return data_ir
 
-def lon_adjust(_ds):
-    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+def lon_adjust(_ds, roll = True):
+    if roll:
+        _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
     _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
     _ds = _ds.chunk("auto")
