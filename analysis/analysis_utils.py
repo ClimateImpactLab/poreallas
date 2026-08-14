@@ -273,12 +273,27 @@ def add_stats_annotation(text, ax, loc="upper left"):
     )
 ##### Plotting Functions #####
 from functools import lru_cache
+import regionmask
 
 #Get and store land data
 @lru_cache(maxsize=None)
 def _get_land(crs):
     land = gpd.read_file(geodatasets.get_path('naturalearth land'))
     return land.cx[:, -60:90].to_crs(crs)
+
+@lru_cache(maxsize=None)
+def _get_land_mask(lon_key, lat_key):
+    dummy = xr.DataArray(
+        np.zeros((len(lat_key), len(lon_key))),
+        coords={"lat": list(lat_key), "lon": list(lon_key)},
+        dims=["lat", "lon"],
+    )
+    return regionmask.defined_regions.natural_earth_v5_0_0.land_110.mask(dummy)
+
+def land_only(da):
+    da = da.rename({"longitude": "lon", "latitude": "lat"})
+    mask = _get_land_mask(tuple(da.lon.values), tuple(da.lat.values))
+    return da.where(mask.notnull() & (da.lat > -60))
 
 def get_step(target_range, min_bins=2, max_bins=8):
     magnitude = 10 ** np.floor(np.log10(target_range))
