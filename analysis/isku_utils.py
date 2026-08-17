@@ -13,11 +13,13 @@ import isku
 
 load_dotenv()
 
+DATA_DIR = os.environ["DATA_DIR"]
 TAS_FORECAST_URI = os.environ["POREALLAS_TAS_FORECAST_URI"]
 ERA5_URI = os.environ["POREALLAS_ERA5_URI"]
 GAMMA_URI = os.environ["POREALLAS_GAMMA_URI"]
 SOCIOECONOMICS_URI = os.environ["POREALLAS_SOCIOECONOMICS_URI"]
 REGIONS_URI = os.environ["POREALLAS_REGIONS_URI"]
+
 
 def _do_nothing(ds: xr.Dataset) -> xr.Dataset:
     return ds
@@ -43,7 +45,7 @@ def grid_to_ir(data, savefile = None):
             data = lon_adjust(data)
         else:
             data = lon_adjust(data, roll = False)
-    regions = read_regions(REGIONS_URI)
+    regions = read_regions(os.path.join(DATA_DIR, REGIONS_URI))
     data_ir = isku.extract_regions(
         data,
         template=do_nothing_func,
