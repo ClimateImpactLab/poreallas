@@ -23,6 +23,7 @@ dependencies = [
     "xarray[complete]>=2026.4.0",
     "xclim>=0.61.1",
     "xhistogram>=0.3.2",
+    "xsdba>=0.7.0",
 ]
 
 [build-system]

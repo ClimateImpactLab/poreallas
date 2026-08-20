@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- BREAKING: Rewrite forecast download, climate data parsing, adding QDM bias correction and "noleap" calendar. ([@brews](https://github.com/brews), [PR#17](https://github.com/ClimateImpactLab/poreallas/pull/17))
+
 ## [0.3.0] - 2026-08-20
 
 ### Added

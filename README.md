@@ -20,13 +20,16 @@ Key configurations are set through environment variables or a .env file (see `ex
 
 The current configurations are:
 
-* POREALLAS_TAS_FORECAST_URI: URI to the cleaned ECMWF S51 ensemble air temperature Zarr Store.
-* POREALLAS_ERA5_URI: URI to the Zarr Store of cleaned daily ERA5 dataset used for historical climate and impacts analysis.
+* POREALLAS_TAS_FORECAST_URI: URI to the parsed and bias-adjusted ECMWF S51 ensemble air temperature Zarr Store.
+* POREALLAS_ERA5_URI: URI to the Zarr Store of parsed and bias-adjusted daily ERA5 dataset used for historical climate and impacts analysis.
 * POREALLAS_GAMMA_URI: URI to the Zarr Store of "gamma" parameters used when calculating to calculate a mortality response function.
 * POREALLAS_REGIONS_URI: URI to the Zarr Store of region and grid weights or "segment weights".
-* POREALLAS_REGIONS_POLYGONS_URI: URI to geoparquet file with polygons for each region. Used for mapping.
 * POREALLAS_SOCIOECONOMICS_URI: URI to file with each region's GDP per capita (gdppc).
 * POREALLAS_EFFECTS_URI: Optional URI to write Zarr store of projected mortality effects. Will not write output if unset.
+* POREALLAS_REGIONS_POLYGONS_URI: URI to geoparquet file with polygons for each region. Used for mapping.
+* POREALLAS_PARSED_GMFD_URI: URI to the Zarr Store of parsed GMFD air temperature data.
+* POREALLAS_PARSED_ERA5_URI: URI to the Zarr Store of parsed daily ERA5 air temperature data.
+* POREALLAS_PARSED_FORECAST_URI: URI to the Zarr Store of parsed ECMWF S51 ensemble air temperature.
 
 These are used to run the prototype in `scripts/` for downloads, parsing/cleaning, and projecting.
 
@@ -44,7 +47,6 @@ uv run scripts/05-project_effects.py
 
 from the root of this repository.
 
-Alternatively, running `uv run scripts/05-project_effects_marimo.py` will project with a prototype GMFD bias-adjustment.
 
 ### Data and parsing
 

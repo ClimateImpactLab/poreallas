@@ -1,29 +1,19 @@
-# Notes in prep for mortality projection based on seasonal ENSO forecasts.
-
-# See https://www.ecmwf.int/en/forecasts/documentation-and-support/seasonal
-# https://cds.climate.copernicus.eu/datasets/seasonal-original-single-levels?tab=download
-# https://iri.columbia.edu/our-expertise/climate/forecasts/seasonal-climate-forecasts/
-
-# Daily ERA5:
-# https://cds.climate.copernicus.eu/datasets/derived-era5-single-levels-daily-statistics
-# # ARCO ERA5:
-# https://github.com/google-research/arco-era5
-# Seasonal forecast daily + subdaily
-# https://cds.climate.copernicus.eu/datasets/seasonal-original-single-levels
+# Download ECMWF S51 minimum and maximum daily temperatures for a forecast beginning in a TARGET_MONTH from 1981 through 2025.
+# The tasmin and tasmax data are written to separate files.
 
 import cdsapi
 
-client = cdsapi.Client()
 
-# Trying to download -daily forecast data.
-# https://cds.climate.copernicus.eu/datasets/seasonal-original-single-levels?tab=download
+TARGET_MONTH = 5
+START_YEAR = 1981
+STOP_YEAR = 2026
+OUT_DIRECTORY = "./data/raw/s51_hist_tasmin_tasmax/"
+
+
 dataset = "seasonal-original-single-levels"
 request = {
     "originating_centre": "ecmwf",
     "system": "51",
-    "variable": ["maximum_2m_temperature_in_the_last_24_hours"],
-    "year": ["2026"],
-    "month": ["05"],
     "day": ["01"],
     "leadtime_hour": [
         "24",
@@ -245,20 +235,28 @@ request = {
     "data_format": "netcdf",
 }
 
-client.retrieve(dataset, request, "./data/raw/s51_tasmax.nc")
-# ds_tasmax = xr.open_dataset("download_s51_tasmax.nc")
+client = cdsapi.Client()
 
-request["variable"] = ["minimum_2m_temperature_in_the_last_24_hours"]
-client.retrieve(dataset, request, "./data/raw/s51_tasmin.nc")
-# ds_tasmin = xr.open_dataset("download_s51_tasmin.nc")
+# Stuff month string with a leading "0" if there is only a single character.
+target_month = str(TARGET_MONTH).zfill(2)
+request["month"] = [target_month]
 
-# ds_tas = xr.merge(
-#     [
-#         xr.open_dataset("download_s51_tasmax.nc"),
-#         xr.open_dataset("download_s51_tasmin.nc"),
-#     ],
-#     compat="no_conflicts",
-# )
+for yr in range(START_YEAR, STOP_YEAR + 1):
+    request["year"] = [str(yr)]
 
-# # Estimate daily tas from daily tasmax and daily tasmin.
-# ds_tas["tas"] = (ds_tas["mx2t24"] + ds_tas["mn2t24"]) / 2
+    request["variable"] = ["minimum_2m_temperature_in_the_last_24_hours"]
+    out_path = OUT_DIRECTORY + f"tasmin-{yr}-{target_month}.nc"
+
+    print(f"Beginning download to {out_path}")
+    client.retrieve(dataset, request, out_path)
+    print(f"Downloaded to {out_path}")
+
+    request["variable"] = ["maximum_2m_temperature_in_the_last_24_hours"]
+
+    out_path = OUT_DIRECTORY + f"tasmax-{yr}-{target_month}.nc"
+
+    print(f"Beginning download to {out_path}")
+    client.retrieve(dataset, request, out_path)
+    print(f"Downloaded to {out_path}")
+
+print("All forecast downloads complete")

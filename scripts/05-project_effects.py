@@ -164,6 +164,12 @@ def main():
     )
     fixed_beta["beta_hotonly"].attrs["long_name"] = "Hot temperature mortality rate"
 
+    # Do beta, allowing only COLD deaths by 0-ing out everything on the warm side of the minimum-mortality temperature.
+    fixed_beta["beta_coldonly"] = fixed_beta["beta"].where(
+        fixed_beta["tas_bin"] < fixed_beta["mmt"], other=0
+    )
+    fixed_beta["beta_coldonly"].attrs["long_name"] = "Cold temperature mortality rate"
+
     # Project mortality.
     # Start with forecast ensemble.
     forecast_input = (
@@ -221,6 +227,34 @@ def main():
         "long_name": "Hot temperature mortality",
     }
 
+    # Now cold-only projection
+    forecast_input = (
+        xr.Dataset(
+            {
+                "histogram_tas": histogram_forecast_tas["histogram_tas"],
+                "beta": fixed_beta["beta_coldonly"],
+            }
+        )
+        .dropna(dim="region")
+        .chunk(
+            {
+                "region": "auto",  # "auto" is a sensible default.
+                "time": -1,
+                "tas_bin": -1,
+                "age_cohort": 1,
+                "number": 1,
+            },
+        )
+        .unify_chunks()
+    )
+    projected_forecast_coldonly = isku.project(
+        forecast_input, model=mortality_effect_model
+    ).compute()
+    projected_forecast_coldonly["effect"].attrs = {
+        "units": "deaths per 100,000 people",
+        "long_name": "Cold temperature mortality",
+    }
+
     # Now do the baseline period.
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
     hist_input = (
@@ -273,12 +307,41 @@ def main():
         "long_name": "Hot temperature mortality",
     }
 
+    # Now cold-only projection
+    hist_input = (
+        xr.Dataset(
+            {
+                "histogram_tas": histogram_hist_tas["histogram_tas"],
+                "beta": fixed_beta["beta_coldonly"],
+            }
+        )
+        .dropna(dim="region")
+        .chunk(
+            {
+                "region": "auto",  # "auto" is a sensible default.
+                "time": -1,
+                "tas_bin": -1,
+                "age_cohort": 1,
+            },
+        )
+        .unify_chunks()
+    )
+    projected_hist_coldonly = isku.project(
+        hist_input, model=mortality_effect_model
+    ).compute()
+    projected_hist_coldonly["effect"].attrs = {
+        "units": "deaths per 100,000 people",
+        "long_name": "Cold temperature mortality",
+    }
+
     # Collect everything and write to storage.
     _out = {
         "forecast": projected_forecast,
         "baseline": projected_hist,
         "forecast_hotonly": projected_forecast_hotonly,
         "baseline_hotonly": projected_hist_hotonly,
+        "forecast_coldonly": projected_forecast_coldonly,
+        "baseline_coldonly": projected_hist_coldonly,
     }
     _out_dt = xr.DataTree.from_dict(_out)
 
@@ -332,8 +395,28 @@ def main():
         "poreallas_regions_uri": REGIONS_URI,
     }
 
+    _out_dt["forecast_coldonly"].attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uid": _uid,
+        "poreallas_description": "Forecast ensemble projected cold temperature mortality effects",
+        "poreallas_temperature_uri": TAS_FORECAST_URI,
+        "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
+        "poreallas_model_parameters_uri": GAMMA_URI,
+        "poreallas_regions_uri": REGIONS_URI,
+    }
+
+    _out_dt["baseline_coldonly"].attrs |= {
+        "poreallas_created_at": _datetime_now,
+        "poreallas_uid": _uid,
+        "poreallas_description": "Baseline projected cold temperature mortality effects",
+        "poreallas_temperature_uri": ERA5_URI,
+        "poreallas_socioeconomics_uri": SOCIOECONOMICS_URI,
+        "poreallas_model_parameters_uri": GAMMA_URI,
+        "poreallas_regions_uri": REGIONS_URI,
+    }
+
     if EFFECTS_URI is not None:
-        _out_dt.to_zarr(EFFECTS_URI, consolidated=False)
+        _out_dt.to_zarr(EFFECTS_URI, consolidated=True)
         print(f"Effects written to {EFFECTS_URI}")
 
 
