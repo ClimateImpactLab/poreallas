@@ -38,6 +38,9 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
     return regions
 
 def grid_to_ir(data, savefile = None):
+    if 'longitude' in data.dims:
+        if data['longitude'].min() >= 0:
+            data = lon_adjust(data)
     regions = read_regions(REGIONS_URI)
     data_ir = isku.extract_regions(
         data,
@@ -48,3 +51,10 @@ def grid_to_ir(data, savefile = None):
     if savefile is not None:
         data_ir.to_zarr(f"{savefile}.zarr")
     return data_ir
+
+def lon_adjust(_ds):
+    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+    _ds = _ds.sortby("longitude")
+    _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
+    _ds = _ds.chunk("auto")
+    return _ds
