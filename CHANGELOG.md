@@ -7,7 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
--
+### Changed
+
+- Update scripts and analysis for August forecast projection. ([@ezuetell](https://github.com/ezuetell), [PR#21](https://github.com/ClimateImpactLab/poreallas/pull/23))
 
 ## [0.4.0] - 2026-08-22
 
