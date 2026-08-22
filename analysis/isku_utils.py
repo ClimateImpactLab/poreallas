@@ -13,11 +13,13 @@ import isku
 
 load_dotenv()
 
+DATA_DIR = os.environ["DATA_DIR"]
 TAS_FORECAST_URI = os.environ["POREALLAS_TAS_FORECAST_URI"]
 ERA5_URI = os.environ["POREALLAS_ERA5_URI"]
 GAMMA_URI = os.environ["POREALLAS_GAMMA_URI"]
 SOCIOECONOMICS_URI = os.environ["POREALLAS_SOCIOECONOMICS_URI"]
 REGIONS_URI = os.environ["POREALLAS_REGIONS_URI"]
+
 
 def _do_nothing(ds: xr.Dataset) -> xr.Dataset:
     return ds
@@ -41,7 +43,9 @@ def grid_to_ir(data, savefile = None):
     if 'longitude' in data.dims:
         if data['longitude'].min() >= 0:
             data = lon_adjust(data)
-    regions = read_regions(REGIONS_URI)
+        else:
+            data = lon_adjust(data, roll = False)
+    regions = read_regions(os.path.join(DATA_DIR, REGIONS_URI))
     data_ir = isku.extract_regions(
         data,
         template=do_nothing_func,
@@ -52,8 +56,9 @@ def grid_to_ir(data, savefile = None):
         data_ir.to_zarr(f"{savefile}.zarr")
     return data_ir
 
-def lon_adjust(_ds):
-    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+def lon_adjust(_ds, roll = True):
+    if roll:
+        _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
     _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
     _ds = _ds.chunk("auto")

@@ -21,8 +21,12 @@ QDM_N_QUANTILES = 10
 UID = str(uuid.uuid4())
 START_TIME = datetime.datetime.now(datetime.UTC).isoformat()
 
-gmfd = xr.open_zarr(GMFD_URI)
-era5 = xr.open_zarr(ERA5_URI)
+gmfd = xr.open_dataset(GMFD_URI, engine = 'zarr', chunks = {}, backend_kwargs = {"storage_options": {"token": "anon"}})
+# Fill extreme values
+gmfd = gmfd.sortby("latitude").chunk({"latitude": -1, "longitude": 30, "time": -1})
+gmfd = gmfd.where(gmfd["tas"] < 1000).interpolate_na(dim="latitude", method="linear").compute()
+
+era5 = xr.open_dataset(ERA5_URI, engine = 'zarr', chunks = {}, backend_kwargs = {"storage_options": {"token": "anon"}})
 
 ref = gmfd.sel(time=slice(str(HISTREF_START_YEAR), str(HISTREF_STOP_YEAR)))
 hist = era5.sel(time=slice(str(HISTREF_START_YEAR), str(HISTREF_STOP_YEAR)))
@@ -63,7 +67,7 @@ sim_adj["tas"].attrs |= {
     "poreallas_sim_uri": ERA5_URI,
 }
 
-sim_adj = sim_adj.chunk("auto")
+sim_adj = sim_adj.chunk("auto").compute()
 
 sim_adj.to_zarr(OUT_ZARR, consolidated=True)
 print(f"Output written to {OUT_ZARR}")
