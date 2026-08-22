@@ -1,13 +1,7 @@
 import os
 from dotenv import load_dotenv
 
-import geopandas
-import marimo as mo
-import matplotlib.pyplot as plt
-import numpy as np
-import seaborn as sns
 import xarray as xr
-from xclim.core import units
 
 import isku
 
@@ -24,10 +18,12 @@ REGIONS_URI = os.environ["POREALLAS_REGIONS_URI"]
 def _do_nothing(ds: xr.Dataset) -> xr.Dataset:
     return ds
 
+
 do_nothing_func = isku.build_extraction_template(
     pre=_do_nothing,
     post=lambda ds: ds.astype("float32"),  # Save space. Don't need float64.
 )
+
 
 def read_regions(uri: str) -> isku.GridWeightingRegions:
     _region_weights = xr.load_dataset(uri)[
@@ -39,12 +35,13 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
     regions = isku.GridWeightingRegions(_region_weights)  # ty: ignore[invalid-argument-type]
     return regions
 
-def grid_to_ir(data, savefile = None):
-    if 'longitude' in data.dims:
-        if data['longitude'].min() >= 0:
+
+def grid_to_ir(data, savefile=None):
+    if "longitude" in data.dims:
+        if data["longitude"].min() >= 0:
             data = lon_adjust(data)
         else:
-            data = lon_adjust(data, roll = False)
+            data = lon_adjust(data, roll=False)
     regions = read_regions(os.path.join(DATA_DIR, REGIONS_URI))
     data_ir = isku.extract_regions(
         data,
@@ -56,7 +53,8 @@ def grid_to_ir(data, savefile = None):
         data_ir.to_zarr(f"{savefile}.zarr")
     return data_ir
 
-def lon_adjust(_ds, roll = True):
+
+def lon_adjust(_ds, roll=True):
     if roll:
         _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
     _ds = _ds.sortby("longitude")
