@@ -78,10 +78,7 @@ gmfd = open_gmfd(
 gmfd = gmfd.convert_calendar("noleap", dim="time")
 
 # Fill extreme values
-gmfd = (
-    gmfd.where(gmfd["tas"] < 1000)
-    .interpolate_na(dim="lat", method="linear")
-)
+gmfd = gmfd.where(gmfd["tas"] < 1000).interpolate_na(dim="lat", method="linear")
 
 regridder = xe.Regridder(gmfd, regrid_target, method="bilinear", periodic=True)
 gmfd_regrid = regridder(gmfd)
