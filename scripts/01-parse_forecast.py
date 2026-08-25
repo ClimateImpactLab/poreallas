@@ -12,9 +12,9 @@ import xarray as xr
 load_dotenv()
 
 OUT_ZARR = os.environ["POREALLAS_PARSED_FORECAST_URI"]
-RAW_FORECAST_FILE_PATTERN = "./data/raw/s51_hist_tasmin_tasmax/{var}-{year}-05.nc"
+RAW_FORECAST_FILE_PATTERN = "./data/raw/s51_hist_tasmin_tasmax/{var}-{year}-08.nc"
 START_YEAR = 1981
-STOP_YEAR = 2026
+STOP_YEAR = 2026  # This is the initializing year of the forecast.
 UID = str(uuid.uuid4())
 START_TIME = datetime.datetime.now(datetime.UTC).isoformat()
 
