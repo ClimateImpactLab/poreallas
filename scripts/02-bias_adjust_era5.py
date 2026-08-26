@@ -17,7 +17,7 @@ HISTREF_START_YEAR = 1981
 HISTREF_STOP_YEAR = 1997
 SIM_START_YEAR = 1996
 SIM_STOP_YEAR = 2025
-QDM_N_QUANTILES = 10
+QDM_N_QUANTILES = 100
 UID = str(uuid.uuid4())
 START_TIME = datetime.datetime.now(datetime.UTC).isoformat()
 
