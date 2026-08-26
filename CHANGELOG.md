@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Forecast bias adjustment failing when forecast extends into new year. ([@brews](https://github.com/brews), [PR#31](https://github.com/ClimateImpactLab/poreallas/pull/31))
 
-- GMFD extreme value cleaning moved so applies to all subsequent steps, not just ERA5 bias adjustment. ([@brews](https://github.com/brews), [PR#17](https://github.com/ClimateImpactLab/poreallas/pull/28))
+- GMFD extreme value cleaning moved so applies to all subsequent steps, not just ERA5 bias adjustment. ([@brews](https://github.com/brews), [PR#28](https://github.com/ClimateImpactLab/poreallas/pull/28))
 
 ## [0.5.0] - 2026-08-24
 
