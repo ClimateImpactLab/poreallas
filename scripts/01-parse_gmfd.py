@@ -73,8 +73,12 @@ gmfd = open_gmfd(
     start_year=START_YEAR,
     stop_year=STOP_YEAR,
 )
+
 # Cannot have leap years in QDM bias adjustment.
 gmfd = gmfd.convert_calendar("noleap", dim="time")
+
+# Fill extreme values
+gmfd = gmfd.where(gmfd["tas"] < 1000).interpolate_na(dim="lat", method="linear")
 
 regridder = xe.Regridder(gmfd, regrid_target, method="bilinear", periodic=True)
 gmfd_regrid = regridder(gmfd)

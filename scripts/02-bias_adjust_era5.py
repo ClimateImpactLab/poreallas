@@ -27,13 +27,6 @@ gmfd = xr.open_dataset(
     chunks={},
     backend_kwargs={"storage_options": {"token": "anon"}},
 )
-# Fill extreme values
-gmfd = gmfd.sortby("latitude").chunk({"latitude": -1, "longitude": 30, "time": -1})
-gmfd = (
-    gmfd.where(gmfd["tas"] < 1000)
-    .interpolate_na(dim="latitude", method="linear")
-    .compute()
-)
 
 era5 = xr.open_dataset(
     ERA5_URI,
