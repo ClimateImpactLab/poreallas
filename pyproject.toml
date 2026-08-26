@@ -43,8 +43,4 @@ dotenv = [".env"]
 
 [tool.ty.src]
 include = ["src", "tests", "scripts"]
-exclude = [
-    "src/generated",
-    # This scripts runs in a separate containerized environment.
-    "scripts/01-download_and_parse_era5.py",
-]
+exclude = ["analysis"]

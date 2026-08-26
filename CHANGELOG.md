@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Script parameters, documentation used May projection settings, updated to August projection settings. ([@brews](https://github.com/brews), [PR#31](https://github.com/ClimateImpactLab/poreallas/pull/32))
+
 - Forecast bias adjustment failing when forecast extends into new year. ([@brews](https://github.com/brews), [PR#31](https://github.com/ClimateImpactLab/poreallas/pull/31))
 
 ## [0.5.0] - 2026-08-24
