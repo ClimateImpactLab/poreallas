@@ -3,10 +3,9 @@
 
 import cdsapi
 
-
-TARGET_MONTH = 5
+TARGET_MONTH = 8
 START_YEAR = 1981
-STOP_YEAR = 2026
+STOP_YEAR = 2026  # This is the year the forecast is intialized in.
 OUT_DIRECTORY = "./data/raw/s51_hist_tasmin_tasmax/"
 
 

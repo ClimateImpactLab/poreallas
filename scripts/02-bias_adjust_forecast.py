@@ -17,7 +17,7 @@ OUT_ZARR = os.environ["POREALLAS_TAS_FORECAST_URI"]
 HISTREF_START_YEAR = 1981
 HISTREF_STOP_YEAR = 1997
 SIM_START_YEAR = 2007
-SIM_STOP_YEAR = 2026
+SIM_STOP_YEAR = 2027  # This is the final year of the time series! Not the initializing year of the forecast!
 QDM_N_QUANTILES = 10
 FORECAST_LENGTH = 215  # ECMWF S51 is 215 days.
 UID = str(uuid.uuid4())
@@ -106,10 +106,10 @@ ref = gmfd.sel(time=slice(str(HISTREF_START_YEAR), str(HISTREF_STOP_YEAR)))
 hist = forecast.sel(time=slice(str(HISTREF_START_YEAR), str(HISTREF_STOP_YEAR)))
 sim = forecast.sel(time=slice(str(SIM_START_YEAR), str(SIM_STOP_YEAR)))
 
-# # Subset reference to only daysofyear that are in our forecast ensemble. The
-# forecast ensemble has incomplete years. Ref/hist/sim need to have matching
-# ragged ends in their time series for QDM.
-ref = ref.where(ref["time.dayofyear"].isin(sim["time.dayofyear"]), drop=True)
+# Only use `ref` with corresponding values in time in `hist`.
+# Need this because forecast ensemble are not a complete time series and
+# 'ref', 'hist' need to match through time.
+ref = ref.where(ref["time"].isin(hist["time"]), drop=True)
 
 # Rechunking because all of "time", or whatever we're grouping QDM on, needs to be in one chunk.
 ref = ref.chunk({"time": -1})
