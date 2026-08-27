@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Use sampled gamma in projected effects script to align with preliminary analysis. ([@brews](https://github.com/brews), [PR#39](https://github.com/ClimateImpactLab/poreallas/pull/39))
+
 ## [0.5.1] - 2026-08-25
 
 ### Fixed
