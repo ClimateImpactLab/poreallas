@@ -29,21 +29,27 @@ jobs:
           python-version-file: ".python-version"
 
       - name: Install the project
+        id: install
         run: uv sync --locked --all-extras --dev
 
       - name: Format check with ruff
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: uv run ruff format . --diff
 
       - name: Lint check with ruff
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: uv run ruff check . --output-format=github
 
       - name: Type check with ty
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: uv run ty check
 
       - name: Test with pytest
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         run: uv run pytest -vv --cov-report term-missing --cov-report xml --cov poreallas
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v6
+        if: ${{ !cancelled() && steps.install.conclusion == 'success' }}
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
