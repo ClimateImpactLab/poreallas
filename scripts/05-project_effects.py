@@ -139,7 +139,7 @@ def main():
                 "tas_bin": histogram_forecast_tas["tas_bin"],
                 "climtas": climtas["climtas"],
                 "loggdppc": loggdppc,
-                "gamma": gammas["gamma_mean"],
+                "gamma": gammas["gamma_sampled"],
             }
         )
         .dropna(dim="region")
@@ -149,6 +149,7 @@ def main():
                 "tas_bin": -1,  # This also needs to be all in memory.
                 "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
                 "degree": -1,  # For gammas and polynomial calculations. Should all be in memory.
+                "sample": 1,  # Dimension for gamma draws. Having them in memory or not is not strictly required.
             },
         )
         .unify_chunks()
@@ -187,6 +188,7 @@ def main():
                 "tas_bin": -1,
                 "age_cohort": 1,
                 "number": 1,
+                "sample": 1,
             },
         )
         .unify_chunks()
