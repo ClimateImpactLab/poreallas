@@ -43,4 +43,4 @@ dotenv = [".env"]
 
 [tool.ty.src]
 include = ["src", "tests", "scripts"]
-exclude = ["*.ipynb"]
+exclude = ["**/*.ipynb"]
