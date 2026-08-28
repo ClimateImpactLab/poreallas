@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - General documentation improvement, updates ([@brews](https://github.com/brews), [PR#36](https://github.com/ClimateImpactLab/poreallas/pull/36))
 
+- Minor improvements to script readability. ([@brews](https://github.com/brews), [7d008e9](https://github.com/ClimateImpactLab/poreallas/commit/7d008e93efe9a044a57aba2ac52fb3f2a29630de))
+
+## [0.5.2] - 2026-08-27
+
+### Fixed
+
+- Use sampled gamma in projected effects script to align with preliminary analysis. ([@brews](https://github.com/brews), [PR#40](https://github.com/ClimateImpactLab/poreallas/pull/40))
+
 ## [0.5.1] - 2026-08-25
 
 ### Fixed
@@ -55,7 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial running prototype.
 
-[Unreleased]: https://github.com/climateimpactlab/poreallas/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/climateimpactlab/poreallas/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/climateimpactlab/poreallas/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/climateimpactlab/poreallas/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/climateimpactlab/poreallas/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/climateimpactlab/poreallas/compare/v0.3.0...v0.4.0

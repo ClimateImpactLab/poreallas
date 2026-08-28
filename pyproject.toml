@@ -1,6 +1,6 @@
 [project]
 name = "poreallas"
-version = "0.5.1"
+version = "0.5.2"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -43,4 +43,4 @@ dotenv = [".env"]
 
 [tool.ty.src]
 include = ["src", "tests", "scripts"]
-exclude = ["analysis"]
+exclude = ["**/*.ipynb"]
