@@ -109,7 +109,7 @@ sim = forecast.sel(time=slice(str(SIM_START_YEAR), str(SIM_STOP_YEAR)))
 # Only use `ref` with corresponding values in time in `hist`.
 # Need this because forecast ensemble are not a complete time series and
 # 'ref', 'hist' need to match through time.
-ref = ref.where(ref["time"].isin(hist["time"]), drop=True)
+ref = ref.sel(time=hist["time"])
 
 # Rechunking because all of "time", or whatever we're grouping QDM on, needs to be in one chunk.
 ref = ref.chunk({"time": -1})
