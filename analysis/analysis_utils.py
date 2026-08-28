@@ -297,7 +297,12 @@ def make_csv(
     baseline_period : tuple or list
         Start/end period defining the baseline for impact computation.
     ensemble : bool, default True
-        Whether to compute impact across an ensemble of runs or return ensemble mean.
+        Whether to compute impact across an ensemble of runs or return
+        ensemble mean.
+    dims : list of str, default ["number", "sample"]
+        Dimensions to aggregate over when computing stats.
+    months : list of int, default [8, 9, 10, 11, 12, 1]
+        Months to include in the impact calculation.
     hotonly : str, default "net"
         Filter for hot-only effects; used in output filenames.
     rate : bool, default False
@@ -307,12 +312,16 @@ def make_csv(
     filename_template : str, optional
         Template string for output filenames. Supports the placeholders
         {hotonly}, {scope}, {rate_l}, and {stat_scope}.
+    output_scope : list of str, default ["regional_monthly", "regional_6mo", "global_monthly", "global_6mo"]
+        Which outputs to generate. Any combination of "regional_monthly",
+        "regional_6mo", "global_monthly", and "global_6mo".
 
     Returns
     -------
     None
-        Writes regional monthly, regional 6-month, global monthly, and
-        global 6-month stats CSVs to disk.
+        Writes CSVs for whichever combination of regional monthly,
+        regional 6-month, global monthly, and global 6-month stats is
+        selected via `output_scope`.
     """
 
     rate_l = "rate" if rate else "total"
