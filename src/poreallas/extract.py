@@ -39,38 +39,6 @@ make_climtas = isku.build_extraction_template(
 )
 
 
-# Need this because the regions/segment weights don't properly align with the ECMWRF grids. So, fuzzy match for now.
-class FuzzyGridWeightingExtractor(isku.RegionExtractor):
-    """
-    Weight a grid and extract regions when the region and weight position don't exactly match lat, lon on the grid.
-
-    Follows the isku.RegionExtractor protocol.
-    Uses Nearest-neighbor search within `tolerance` to extract points from a grid. Suggest using a reasonable `tolerance` that does not extend beyond one grid cell width. Otherwise, the algorithm will happily walk across the globe to find a matching grid point.
-    """
-
-    def __init__(self, weights: xr.Dataset, tolerance: float):
-        # Check everything we need is there.
-        target_variables = ("lat", "lon", "weight", "region")
-        missing_variables = [v for v in target_variables if v not in weights.variables]
-        if missing_variables:
-            raise ValueError(
-                f"input weights is missing required {missing_variables} variable(s)"
-            )
-
-        self._data = weights
-        self.tolerance = tolerance
-
-    def extract_regions(self, ds: xr.Dataset) -> xr.Dataset:
-        region_sel = ds.sel(
-            lat=self._data["lat"],
-            lon=self._data["lon"],
-            method="nearest",
-            tolerance=self.tolerance,
-        )
-        out = (region_sel * self._data["weight"]).groupby(self._data["region"]).sum()
-        return out
-
-
 def _make_monthly_tas_histogram(ds: xr.Dataset) -> xr.Dataset:
     _tas = xr.DataArray(units.convert_units_to(ds["tas"], "degC"))
 
