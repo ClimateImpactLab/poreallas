@@ -48,9 +48,6 @@ def compute_cumulative_effect(
                 region=region_filter, time=reanalysis_local.time.dt.month == month
             )
 
-            ref_vals = (
-                betas_mmt["mmt"].sel(region=region_filter).sel(age_cohort="age65plus")
-            )
             betas = betas_mmt["beta_hotonly"] if hotonly else betas_mmt["beta"]
             da_temp_bins = betas.sel(region=region_filter).sel(age_cohort="age65plus")
             da_temp_bins["tas_bin"] = da_temp_bins["tas_bin"]
