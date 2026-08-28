@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- General documentation improvement, updates ([@brews](https://github.com/brews), [PR#36](https://github.com/ClimateImpactLab/poreallas/pull/36))
+
 - Minor improvements to script readability. ([@brews](https://github.com/brews), [7d008e9](https://github.com/ClimateImpactLab/poreallas/commit/7d008e93efe9a044a57aba2ac52fb3f2a29630de))
 
 ## [0.5.2] - 2026-08-27
