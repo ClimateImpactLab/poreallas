@@ -13,6 +13,7 @@ from poreallas.extract import (
     _make_annual_tas,
     _make_30hbartlett_climtas,
     make_climtas,
+    make_tas_monthly_histogram,
 )
 
 
@@ -131,4 +132,53 @@ def test_make_climtas(basic_segment_weights):
         template=make_climtas,
         regions=basic_segment_weights,
     )
+    xr.testing.assert_allclose(actual, expected)
+
+
+def test_make_monthly_histogram(basic_segment_weights):
+    """
+    Test that make_tas_monthly_histogram extraction run through apply_transformation.
+
+    This basically tests that it runs, the output is a histogram monthly time series when given a daily tas timeseries as input.
+    """
+
+    # Building the expected output.
+    # Input is just 1.0 repeated for 365 days in the year 2000. If these are
+    # broken down into monthly histograms, we expect the histogram bin covering "1.0"
+    # to have a count equal to the number of days for that month.
+    # So, we first build a Dataset with the needed structure. Then, we insert the
+    # count of "days_in_month" across the time slice, for the index of the bin containing 1.0.
+    expected = xr.Dataset(
+        {"histogram_tas": (["region", "time", "tas_bin"], np.zeros((1, 12, 170)))},
+        coords={
+            "region": np.array(["foobar"]),
+            "time": xr.date_range(
+                "2000-01-01", "2000-12-31", freq="1MS", calendar="noleap"
+            ),
+            "tas_bin": np.arange(-105, 65) + 0.5,
+        },
+    )
+    expected["histogram_tas"].data[0, :, 106] = expected["time.days_in_month"].data
+
+    ds_in = xr.Dataset(
+        {
+            "tas": (
+                ["lon", "lat", "time"],
+                np.ones(365, dtype=np.float32).reshape(1, 1, 365),
+            )
+        },
+        coords={
+            "lon": [1.0],
+            "lat": [0.0],
+            "time": xr.date_range(
+                "2000-01-01", "2000-12-31", freq="1D", calendar="noleap"
+            ),
+        },
+    )
+    ds_in["tas"].attrs["units"] = "degC"
+
+    actual = isku.extract_regions(
+        ds_in, template=make_tas_monthly_histogram, regions=basic_segment_weights
+    )
+
     xr.testing.assert_allclose(actual, expected)
