@@ -62,7 +62,7 @@ def compute_impact(
     baseline_period,
     chunks={"number": -1, "sample": -1, "region": "auto"},
     ensemble=False,
-    hotonly=False,
+    hotonly='net',
     rate=False,
     age_weight=True,
     cohort="age65plus",
@@ -74,8 +74,9 @@ def compute_impact(
     Parameters
     ----------
     projected : xarray.DataTree
-        Container with "/baseline", "/forecast", "/baseline_hotonly", and
-        "/forecast_hotonly" groups, each holding an "effect" DataArray.
+        Container with "/baseline", "/forecast", "/baseline_hotonly",
+        "/forecast_hotonly", "/baseline_coldonly", and "/forecast_coldonly"
+        groups, each holding an "effect" DataArray.
     socioeconomics : xarray.Dataset or DataArray
         Population and demographic data used for weighting in pop_weight_sum.
     baseline_period : slice or array-like
@@ -83,8 +84,11 @@ def compute_impact(
     ensemble : bool, default False
         If True, keep the ensemble ("number") dimension when computing the
         forecast monthly climatology. If False, average over "number" first.
-    hotonly : bool, default False
-        If True, use the hot-only effect groups instead of the net effect groups.
+   hotonly : str, default "net"
+        Which effect group to use. Must be one of "net", "hotonly", or
+        "coldonly". "hotonly" selects the hot-only effect groups,
+        "coldonly" selects the cold-only effect groups, and "net" selects
+        the net effect groups.
     rate : bool, default False
         Passed to pop_weight_sum; if True, return mortality rates instead of population-weighted totals.
     age_weight : bool, default True
@@ -98,6 +102,10 @@ def compute_impact(
         Population-weighted regional sum (or rate) of the impact, as returned
         by pop_weight_sum.
     """
+
+    valid_hotonly = ("net", "hotonly", "coldonly")
+    if hotonly not in valid_hotonly:
+        raise ValueError(f"Invalid hotonly: {hotonly!r}. Must be one of {valid_hotonly}.")
 
     if hotonly == "hotonly":
         # Hotonly
@@ -147,7 +155,7 @@ def compute_impact(
                 .groupby("time.month")
                 .mean()
             )
-    else:
+    elif hotonly == "net":
         ## Net
         _baseline = (
             projected["/baseline"]["effect"]
@@ -347,10 +355,6 @@ def make_csv(
         "likely_range_IPCC",
         "mean",
         "std",
-        "min",
-        "max",
-        "p10",
-        "p90",
     ]
     if "regional_monthly" in output_scope:
         _polygons_impact = compute_stats(impact, dim=dims, polygon=polygon)
@@ -378,10 +382,6 @@ def make_csv(
                 "likely_range_IPCC",
                 "mean",
                 "std",
-                "min",
-                "max",
-                "p10",
-                "p90",
             ]
         ]
         stat_col_names = mo6_out.columns.difference(["region", "ISO"])
