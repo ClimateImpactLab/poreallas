@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Testing for tas monthly histogram region extraction. ([@brews](https://github.com/brews), [PR#48](https://github.com/ClimateImpactLab/poreallas/pull/48))
+
 ### Changed
 
 - General documentation improvement, updates ([@brews](https://github.com/brews), [PR#36](https://github.com/ClimateImpactLab/poreallas/pull/36))
