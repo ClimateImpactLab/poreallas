@@ -128,7 +128,9 @@ def main():
         template=make_climtas,
         regions=regions,
     ).sel(year=2025, drop=True)
-    loggdppc = np.log(socioeconomics["gdppc"].sel(year=2023, drop=True))
+
+    # log(GDPpc + 1), the + 1 prevents warning about undefined behavior when log is fed a GDPpc of 0.
+    loggdppc = np.log(socioeconomics["gdppc"].sel(year=2023, drop=True) + 1)
 
     # Calculate a fixed response function, i.e. beta.
     # Single, static response function with no adaptation is used for both projections.
