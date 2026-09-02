@@ -20,5 +20,5 @@ ds = df.to_xarray()
 # Somewhat picked at random, as long as the zarr doesn't require folks to load ~1 GiB data at once.
 ds = ds.chunk({"region": 1000, "year": 365})
 
-ds.to_zarr(OUT_ZARR_URI, consolidated=False)
+ds.to_zarr(OUT_ZARR_URI, consolidated=True)
 print(f"Socioeconomic data written to {OUT_ZARR_URI}")
