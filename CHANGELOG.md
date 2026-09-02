@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add one to GDPpc before log transfromation to avoid dividing by zero. ([@brews](https://github.com/brews), [PR#55](https://github.com/ClimateImpactLab/poreallas/pull/55))
+
 - Rename pre-processing scripts for consistency, clarity. ([@brews](https://github.com/brews), [PR#53](https://github.com/ClimateImpactLab/poreallas/pull/53))
 
 - Write parsed gamma, weights, socioeconomics with consolitdated metadata. ([@brews](https://github.com/brews), [PR#56](https://github.com/ClimateImpactLab/poreallas/pull/56))
