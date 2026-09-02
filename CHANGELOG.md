@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Add one to GDPpc before log transfromation to avoid dividing by zero. ([@brews](https://github.com/brews), [PR#55](https://github.com/ClimateImpactLab/poreallas/pull/55))
+
 - Rename pre-processing scripts for consistency, clarity. ([@brews](https://github.com/brews), [PR#53](https://github.com/ClimateImpactLab/poreallas/pull/53))
 
 - General documentation improvement, updates ([@brews](https://github.com/brews), [PR#36](https://github.com/ClimateImpactLab/poreallas/pull/36))
