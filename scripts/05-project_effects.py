@@ -28,56 +28,42 @@ REGIONS_URI = os.environ["POREALLAS_REGIONS_URI"]
 EFFECTS_URI = os.getenv("POREALLAS_EFFECTS_URI")
 
 
-def read_reanalysis(uri: str) -> xr.Dataset:
-    _ds = xr.load_dataset(uri)
+def trim_ragged_months(
+    ds: xr.Dataset, *, required_proportion: float = 0.9, datetime_dim="time"
+) -> xr.Dataset:
+    """
+    Drop months without required number of days, returning a copy of input dataset.
 
-    # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
-    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
-    _ds = _ds.sortby("longitude")
-    _ds = _ds.rename({"longitude": "lon", "latitude": "lat"})
-    _ds = _ds.chunk("auto")
+    Forecast ensemble is for a fixed number of days so we expect to usually
+    trim off the last month of the forecast if it is ragged and missing days beyond
+    a threshold.
+    """
+    ds = ds.copy()
 
-    return _ds
-
-
-def read_forecast_ensemble(uri: str) -> xr.Dataset:
-    _ds = xr.load_dataset(uri)
-
-    # Clean up longitude. The data goes from longitude 0 to 360. It needs to go -180 to 180 in ascending order.
-    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
-    _ds = _ds.sortby("longitude")
-    _ds = _ds.rename({"latitude": "lat", "longitude": "lon"})
-    _ds = _ds.chunk("auto")
-
-    # TODO: We prob don't want this here. Should be in earlier cleaning. Here for backwards compatibility.
-    # Drop months without required number of obs. Forecast ensemble is for a fixed number of days so we expect to usually trim off the last month of the forecast if it is ragged and missing days beyond a threshold.
-    _dt_dim = "time"
-    _n_initial = _ds[_dt_dim].size
-    _number_obs = _ds[_dt_dim].resample(time="ME").count()
-    _days_in_month = _number_obs[_dt_dim].dt.days_in_month
-    required_percent = 0.9
-    _min_req = np.round(_days_in_month * required_percent)
-    _qualifying_months = _number_obs.where(_number_obs >= _min_req, drop=True)[
-        "time"
+    n_initial = ds[datetime_dim].size
+    number_obs = ds[datetime_dim].resample(time="ME").count()
+    days_in_month = number_obs[datetime_dim].dt.days_in_month
+    min_req = np.round(days_in_month * required_proportion)
+    qualifying_months = number_obs.where(number_obs >= min_req, drop=True)[
+        datetime_dim
     ].dt.month
-    _ds = _ds.where(_ds[_dt_dim].dt.month.isin(_qualifying_months), drop=True)
+    ds = ds.where(ds[datetime_dim].dt.month.isin(qualifying_months), drop=True)
 
-    _n_current = _ds[_dt_dim].size
-    _n_initial_months = _number_obs[_dt_dim].size
-    _n_qualifying_months = _qualifying_months["time"].size
+    n_current = ds[datetime_dim].size
+    n_initial_months = number_obs[datetime_dim].size
+    n_qualifying_months = qualifying_months[datetime_dim].size
 
     print(
-        f"continuing with {_n_qualifying_months} of {_n_initial_months} forecast months after removing incomplete months"
+        f"continuing with {n_qualifying_months} of {n_initial_months} forecast months after removing incomplete months"
     )
     print(
-        f"continuing with {_n_current} of {_n_initial} forecast periods after removing incomplete months"
+        f"continuing with {n_current} of {n_initial} forecast periods after removing incomplete months"
     )
 
-    assert (_n_qualifying_months - _n_initial_months) < 2, (
+    assert (n_qualifying_months - n_initial_months) < 2, (
         "More than one incomplete month was removed from the forecast while checking for incomplete months. Something unexpected is happening."
     )
-
-    return _ds
+    return ds
 
 
 def read_regions(uri: str) -> isku.GridWeightingRegions:
@@ -91,20 +77,15 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
     return regions
 
 
-def read_gammas(uri: str) -> xr.Dataset:
-    return xr.load_dataset(uri)
-
-
-def read_socioeconomics(uri: str) -> xr.Dataset:
-    return xr.load_dataset(uri)
-
-
 def main():
-    reanalysis = read_reanalysis(ERA5_URI)
-    forecast_ensemble = read_forecast_ensemble(TAS_FORECAST_URI)
+    reanalysis = xr.load_dataset(ERA5_URI)
+    forecast_ensemble = xr.load_dataset(TAS_FORECAST_URI)
     regions = read_regions(REGIONS_URI)
-    socioeconomics = read_socioeconomics(SOCIOECONOMICS_URI)
-    gammas = read_gammas(GAMMA_URI)
+    socioeconomics = xr.load_dataset(SOCIOECONOMICS_URI)
+    gammas = xr.load_dataset(GAMMA_URI)
+
+    # Last months of forecast often missing significant number of days. Remove these ragged months.
+    forecast_ensemble = trim_ragged_months(forecast_ensemble)
 
     # Transform gridded data, extracting regional data needed for projections.
     histogram_hist_tas = isku.extract_regions(
