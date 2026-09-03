@@ -119,7 +119,7 @@ gmfd_regrid["tas"].attrs |= {
 }
 
 # All of time needs to be in a single chunk for QDM bias adjustment.
-gmfd_regrid = gmfd_regrid.chunk({"time": -1, "latitude": 30, "longitude": "auto"})
+gmfd_regrid = gmfd_regrid.chunk({"time": -1, "lat": 30, "lon": "auto"})
 
 gmfd_regrid.to_zarr(OUT_ZARR, consolidated=True)
 print(f"Output written to {OUT_ZARR}")
