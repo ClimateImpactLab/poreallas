@@ -62,7 +62,7 @@ def compute_impact(
     baseline_period,
     chunks={"number": -1, "sample": -1, "region": "auto"},
     ensemble=False,
-    hotonly=False,
+    hotonly='net',
     rate=False,
     age_weight=True,
     cohort="age65plus",
@@ -74,8 +74,9 @@ def compute_impact(
     Parameters
     ----------
     projected : xarray.DataTree
-        Container with "/baseline", "/forecast", "/baseline_hotonly", and
-        "/forecast_hotonly" groups, each holding an "effect" DataArray.
+        Container with "/baseline", "/forecast", "/baseline_hotonly",
+        "/forecast_hotonly", "/baseline_coldonly", and "/forecast_coldonly"
+        groups, each holding an "effect" DataArray.
     socioeconomics : xarray.Dataset or DataArray
         Population and demographic data used for weighting in pop_weight_sum.
     baseline_period : slice or array-like
@@ -83,8 +84,11 @@ def compute_impact(
     ensemble : bool, default False
         If True, keep the ensemble ("number") dimension when computing the
         forecast monthly climatology. If False, average over "number" first.
-    hotonly : bool, default False
-        If True, use the hot-only effect groups instead of the net effect groups.
+   hotonly : str, default "net"
+        Which effect group to use. Must be one of "net", "hotonly", or
+        "coldonly". "hotonly" selects the hot-only effect groups,
+        "coldonly" selects the cold-only effect groups, and "net" selects
+        the net effect groups.
     rate : bool, default False
         Passed to pop_weight_sum; if True, return mortality rates instead of population-weighted totals.
     age_weight : bool, default True
@@ -98,6 +102,10 @@ def compute_impact(
         Population-weighted regional sum (or rate) of the impact, as returned
         by pop_weight_sum.
     """
+
+    valid_hotonly = ("net", "hotonly", "coldonly")
+    if hotonly not in valid_hotonly:
+        raise ValueError(f"Invalid hotonly: {hotonly!r}. Must be one of {valid_hotonly}.")
 
     if hotonly == "hotonly":
         # Hotonly
@@ -147,7 +155,7 @@ def compute_impact(
                 .groupby("time.month")
                 .mean()
             )
-    else:
+    elif hotonly == "net":
         ## Net
         _baseline = (
             projected["/baseline"]["effect"]
@@ -192,6 +200,11 @@ def compute_impact(
     )
     return regional_sum
 
+def compute_global_impact(impact, socioeconomics, rate=False):
+    if rate:
+        pop = socioeconomics["population"].sel(region=impact.region)
+        return (impact * pop).sum(dim="region") / pop.sum(dim="region")
+    return impact.sum(dim="region")
 
 ### Analysis Functions ###
 
@@ -251,16 +264,74 @@ def compute_stats(da, dim="number", polygon=None):
 
 
 ###Output Functions ###
+def dataset_to_dataframe(ds):
+    if len(ds.dims) == 0:
+        return pd.DataFrame({k: [v.values.item()] for k, v in ds.data_vars.items()})
+    return ds.to_dataframe().reset_index()
+
 def make_csv(
     effect,
     socioeconomics,
     polygon,
     baseline_period,
     ensemble=True,
+    dims = ["number", "sample"],
+    months = [8, 9, 10, 11, 12, 1],
     hotonly="net",
     rate=False,
     age_weight=True,
+    filename_template="2608_{hotonly}_{scope}_{rate_l}_{stat_scope}stats.csv",
+    output_scope = ["regional_monthly", "regional_6mo", "global_monthly", "global_6mo"],
 ):
+    """
+    Compute regional and global impact stats from an effects datatree and
+    write them out as CSVs.
+
+    Computes impact from `effect`, then generates monthly, 6-month, and
+    global summary statistics (region-level via `polygon`, global via
+    population-weighted averaging when `rate=True` or summation when
+    `rate=False`). All stats are rounded to the nearest integer before
+    being written to CSV.
+
+    Parameters
+    ----------
+    effect : xr.DataArray or xr.Dataset
+        Effect data used to compute impact.
+    socioeconomics : xr.Dataset
+        Socioeconomic data, including population, used for impact
+        computation and population-weighted global rates.
+    polygon : GeoDataFrame or similar
+        Impact region polygons used to group regional stats.
+    baseline_period : tuple or list
+        Start/end period defining the baseline for impact computation.
+    ensemble : bool, default True
+        Whether to compute impact across an ensemble of runs or return
+        ensemble mean.
+    dims : list of str, default ["number", "sample"]
+        Dimensions to aggregate over when computing stats.
+    months : list of int, default [8, 9, 10, 11, 12, 1]
+        Months to include in the impact calculation.
+    hotonly : str, default "net"
+        Filter for hot-only effects; used in output filenames.
+    rate : bool, default False
+        If True, compute population-weighted rates instead of totals.
+    age_weight : bool, default True
+        Whether to apply age weighting in the impact computation.
+    filename_template : str, optional
+        Template string for output filenames. Supports the placeholders
+        {hotonly}, {scope}, {rate_l}, and {stat_scope}.
+    output_scope : list of str, default ["regional_monthly", "regional_6mo", "global_monthly", "global_6mo"]
+        Which outputs to generate. Any combination of "regional_monthly",
+        "regional_6mo", "global_monthly", and "global_6mo".
+
+    Returns
+    -------
+    None
+        Writes CSVs for whichever combination of regional monthly,
+        regional 6-month, global monthly, and global 6-month stats is
+        selected via `output_scope`.
+    """
+
     rate_l = "rate" if rate else "total"
 
     # Compute Impact from Effect
@@ -273,7 +344,9 @@ def make_csv(
         rate=rate,
         age_weight=age_weight,
     )
+    impact = impact.sel(month = months)  # Only use first 6 months
 
+    ### Stats by Impact Region ###
     # Monthly Stats
     stat_cols = [
         "median",
@@ -282,39 +355,61 @@ def make_csv(
         "likely_range_IPCC",
         "mean",
         "std",
-        "min",
-        "max",
-        "p10",
-        "p90",
     ]
-    _polygons_impact = compute_stats(impact, dim=["number", "sample"], polygon=polygon)
-    wide = _polygons_impact.pivot(
-        index=["region", "ISO"], columns="month", values=stat_cols
-    )
-    wide.columns = [f"month {m} {stat}" for stat, m in wide.columns]
-    wide = wide.reset_index()
-    wide.to_csv(f"2608_{hotonly}_{rate_l}_all_stats.csv", index=False)
-
-    # 6-month stats
-    mo6 = impact.sum(dim="month")
-    _polygons_mo6 = compute_stats(mo6, dim=["number", "sample"], polygon=polygon)
-    mo6_out = _polygons_mo6[
-        [
-            "region",
-            "ISO",
-            "median",
-            "p17",
-            "p83",
-            "likely_range_IPCC",
-            "mean",
-            "std",
-            "min",
-            "max",
-            "p10",
-            "p90",
+    if "regional_monthly" in output_scope:
+        _polygons_impact = compute_stats(impact, dim=dims, polygon=polygon)
+        wide = _polygons_impact.pivot(
+            index=["region", "ISO"], columns="month", values=stat_cols
+        )
+        wide.columns = [f"month {m} {stat}" for stat, m in wide.columns]
+        stat_col_names = wide.columns.difference(["region", "ISO"])
+        wide[stat_col_names] = wide[stat_col_names].round(0).astype("Int64")
+        wide = wide.reset_index()
+        wide.to_csv(
+        filename_template.format(hotonly=hotonly, rate_l=rate_l, scope="all", stat_scope=""),
+        index=False,)
+    if "regional_6mo" in output_scope:
+        # 6-month stats
+        mo6 = impact.sum(dim="month")
+        _polygons_mo6 = compute_stats(mo6, dim=dims, polygon=polygon)
+        mo6_out = _polygons_mo6[
+            [
+                "region",
+                "ISO",
+                "median",
+                "p17",
+                "p83",
+                "likely_range_IPCC",
+                "mean",
+                "std",
+            ]
         ]
-    ]
-    mo6_out.to_csv(f"2608_{hotonly}_6mo_{rate_l}_all_stats.csv", index=False)
+        stat_col_names = mo6_out.columns.difference(["region", "ISO"])
+        mo6_out[stat_col_names] = mo6_out[stat_col_names].round(0).astype("Int64")
+        mo6_out.to_csv(
+        filename_template.format(hotonly=hotonly, rate_l=rate_l, scope="6mo", stat_scope=""),
+        index=False,
+)
+    if "global_monthly" in output_scope or "global_6mo" in output_scope:
+        ### Global Stats ###
+        global_impact = compute_global_impact(impact, socioeconomics, rate=rate)
+
+        if "global_monthly" in output_scope:
+            global_monthly = dataset_to_dataframe(compute_stats(global_impact, dim=dims))
+            stat_col_names = global_monthly.columns.difference(["region", "ISO"])
+            global_monthly[stat_col_names] = global_monthly[stat_col_names].round(0).astype("Int64")
+            global_monthly.to_csv(
+            filename_template.format(hotonly=hotonly, rate_l=rate_l, scope="global", stat_scope=""),
+            index=False,
+        )
+        if "global_6mo" in output_scope:
+            global_mo6 = dataset_to_dataframe(compute_stats(global_impact.sum(dim="month"), dim=dims))
+            stat_col_names = global_mo6.columns.difference(["region", "ISO"])
+            global_mo6[stat_col_names] = global_mo6[stat_col_names].round(0).astype("Int64")
+            global_mo6.to_csv(
+            filename_template.format(hotonly=hotonly, rate_l=rate_l, scope="6mo_global", stat_scope=""),
+            index=False,
+        )
     return
 
 
