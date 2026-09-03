@@ -126,7 +126,9 @@ era5 = open_era5(
 era5 = era5.convert_calendar("noleap", dim="time")
 
 regridder = xe.Regridder(era5, regrid_target, method="bilinear", periodic=True)
-era5_regrid = regridder(era5)
+# The *.persist() helps to stabilize this. If we don't compute until output is
+# written workers may choke transposing large data.
+era5_regrid = regridder(era5).persist()
 era5_regrid.attrs |= era5.attrs
 
 # Transform lat/lon coords for later projection.
