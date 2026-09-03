@@ -93,6 +93,22 @@ def open_era5(
     return out_ds
 
 
+def standardize_latlon(ds: xr.Dataset) -> xr.Dataset:
+    """Harmonize latitude and longitude coordinates, returning a copy of the input dataset
+
+    Input data with longitude from 0 to 360 is transformed to go from -180 to
+    180 in ascending order. The "latitude" and "longitude" coordinates are renamed
+    to "lat" and "lon", respectively.
+    """
+    _ds = ds.copy()
+
+    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+    _ds = _ds.sortby("longitude")
+    _ds = _ds.rename({"latitude": "lat", "longitude": "lon"})
+
+    return _ds
+
+
 dask.config.set({"distributed.comm.timeouts.connect": "60s"})
 cluster = GatewayCluster(worker_image=JUPYTER_IMAGE, scheduler_image=JUPYTER_IMAGE)
 client = cluster.get_client()
@@ -113,6 +129,9 @@ regridder = xe.Regridder(era5, regrid_target, method="bilinear", periodic=True)
 era5_regrid = regridder(era5)
 era5_regrid.attrs |= era5.attrs
 
+# Transform lat/lon coords for later projection.
+era5_regrid = standardize_latlon(era5_regrid)
+
 # Metadata on units is required later in the workflow.
 era5_regrid["tas"].attrs["units"] = "K"
 
@@ -130,7 +149,7 @@ era5_regrid["tas"].attrs |= {
 
 # All of time needs to be in a single chunk for QDM bias adjustment.
 # This generally gets you ~110 MiB chunks.
-era5_regrid = era5_regrid.chunk({"time": -1, "latitude": 30, "longitude": 60})
+era5_regrid = era5_regrid.chunk({"time": -1, "lat": 30, "lon": 60})
 
 era5_regrid.to_zarr(OUT_ZARR, consolidated=True)
 print(f"Output written to {OUT_ZARR}")

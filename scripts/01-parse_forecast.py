@@ -25,6 +25,23 @@ print(
     """
 )
 
+
+def standardize_latlon(ds: xr.Dataset) -> xr.Dataset:
+    """Harmonize latitude and longitude coordinates, returning a copy of the input dataset
+
+    Input data with longitude from 0 to 360 is transformed to go from -180 to
+    180 in ascending order. The "latitude" and "longitude" coordinates are renamed
+    to "lat" and "lon", respectively.
+    """
+    _ds = ds.copy()
+
+    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+    _ds = _ds.sortby("longitude")
+    _ds = _ds.rename({"latitude": "lat", "longitude": "lon"})
+
+    return _ds
+
+
 # # We are intentionally merging hindcast and forecast datasets even though they
 # have different ensemble sizes (the "number" dim). The hindcast gets stuffed
 # with NaNs. This is needed when training QDM on the hindcast data and applying
@@ -68,6 +85,9 @@ s51 = (
 # Need matching calendars. Removing leap days makes QDM easier.
 s51 = s51.convert_calendar("noleap", dim="time")
 
+# Transform lat/lon coords for later projection.
+s51 = standardize_latlon(s51)
+
 # Add additional general metadata.
 s51.attrs |= {
     "poreallas_created_at": START_TIME,
@@ -81,7 +101,7 @@ s51["tas"].attrs |= {
 }
 
 # Rechunking because all of "time", or whatever we're grouping QDM on, needs to be in one chunk.
-s51 = s51.chunk({"number": -1, "time": -1, "latitude": 30, "longitude": "auto"})
+s51 = s51.chunk({"number": -1, "time": -1, "lat": 30, "lon": "auto"})
 
 s51.to_zarr(OUT_ZARR, consolidated=True)
 print(f"Output written to {OUT_ZARR}")
