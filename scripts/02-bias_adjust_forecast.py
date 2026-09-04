@@ -114,8 +114,8 @@ ref = ref.sel(time=hist["time"])
 
 # Rechunking because all of "time", or whatever we're grouping QDM on, needs to be in one chunk.
 ref = ref.chunk({"time": -1})
-hist = hist.chunk({"number": -1, "time": -1, "latitude": "30", "longitude": "auto"})
-sim = sim.chunk({"number": -1, "time": -1, "latitude": "30", "longitude": "auto"})
+hist = hist.chunk({"number": -1, "time": -1, "lat": "30", "lon": "auto"})
+sim = sim.chunk({"number": -1, "time": -1, "lat": "30", "lon": "auto"})
 
 # Train QDM and adjust the forecast ensemble, for the months in the forecast ensemble.
 sim_adj = adjust_months(
