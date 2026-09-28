@@ -5,6 +5,7 @@ import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import cartopy.crs as ccrs
 
 from analysis_utils import _get_land
 
@@ -154,6 +155,9 @@ def plot_single(
     ax=None,
     cbar_location="right",
     colorbar=True,
+    cbar_shrink=0.6, 
+    cbar_aspect=20, 
+    cbar_pad=0.02,
     n_colors=None,
     annotation=None,
     target_crs="ESRI:54030",
@@ -196,7 +200,9 @@ def plot_single(
             ax=ax,
             location=cbar_location,
             orientation=orientation,
-            shrink=0.6,
+            shrink=cbar_shrink,
+            aspect = cbar_aspect,
+            pad = cbar_pad,
             ticks=ticks,
             label=cbar_label,
         )

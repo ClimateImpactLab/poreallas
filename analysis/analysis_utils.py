@@ -200,7 +200,7 @@ def compute_global_impact(impact, socioeconomics, rate, group_dim="region"):
     if rate:
         if group_dim == 'region':
             #Pop-weight each region
-            pop = socioeconomics["population"].sel(region=impact.region)
+            pop = socioeconomics["pop"].sel(region=impact.region)
         else:
             raise ValueError("Pop-Weighting only available for region group")
             # TODO Aggregate population to other group levels
