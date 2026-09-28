@@ -2,8 +2,6 @@ import os
 from dotenv import load_dotenv
 
 import numpy as np
-import xarray as xr
-
 
 load_dotenv()
 
@@ -69,9 +67,6 @@ def compute_cumulative_effect(
         forecast_local_month = forecast_local.sel(region=region_filter)
         reanalysis_local_month = reanalysis_local.sel(region=region_filter)
 
-        ref_vals = (
-            betas_mmt["mmt"].sel(region=region_filter).sel(age_cohort="age65plus")
-        )
         betas = betas_mmt["beta_hotonly"] if hotonly else betas_mmt["beta"]
         da_temp_bins = betas.sel(region=region_filter).sel(age_cohort="age65plus")
         da_temp_bins["tas_bin"] = da_temp_bins["tas_bin"]

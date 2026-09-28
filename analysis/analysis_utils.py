@@ -6,21 +6,16 @@ import xarray as xr
 import pandas as pd
 import geopandas as gpd
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 
 from functools import lru_cache
 import regionmask
 import geodatasets
 
-import os
-from dotenv import load_dotenv
-
 import cil_regionalization as cilreg
 from cil_regionalization.config import SourceUnitPolicies
 
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -481,7 +476,6 @@ def make_csv(
             values=stat_cols,
         )
         wide.columns = [f"month {m} {stat}" for stat, m in wide.columns]
-        stat_col_names = wide.columns.difference(base_cols)
         wide = wide.reset_index()
         wide_rounded = round_output(wide)
         wide.to_csv(
