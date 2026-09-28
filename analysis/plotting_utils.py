@@ -1,4 +1,3 @@
-
 import math
 
 import numpy as np
@@ -19,6 +18,7 @@ DIVERGING_CMAPS = {
     "PRGn",
     "BrBG",
 }
+
 
 def build_stats_text(da, dim=None, fmt="{:.2f}"):
     stats = {
@@ -155,8 +155,8 @@ def plot_single(
     ax=None,
     cbar_location="right",
     colorbar=True,
-    cbar_shrink=0.6, 
-    cbar_aspect=20, 
+    cbar_shrink=0.6,
+    cbar_aspect=20,
     cbar_pad=0.02,
     n_colors=None,
     annotation=None,
@@ -201,8 +201,8 @@ def plot_single(
             location=cbar_location,
             orientation=orientation,
             shrink=cbar_shrink,
-            aspect = cbar_aspect,
-            pad = cbar_pad,
+            aspect=cbar_aspect,
+            pad=cbar_pad,
             ticks=ticks,
             label=cbar_label,
         )
@@ -245,7 +245,13 @@ def plot_monthly(
         present = set(gdf["month"].unique())
         months = [m for m in month_order if m in present]
 
-    fig, axes = plt.subplots(2, 3, figsize=(16, 6),gridspec_kw={"wspace": 0.02, "hspace": 0.02}, constrained_layout=True)
+    fig, axes = plt.subplots(
+        2,
+        3,
+        figsize=(16, 6),
+        gridspec_kw={"wspace": 0.02, "hspace": 0.02},
+        constrained_layout=True,
+    )
 
     for ax, month in zip(axes.flat, months):
         group = gdf[gdf["month"] == month]
@@ -263,7 +269,7 @@ def plot_monthly(
         )
         ax.set_title(f"Month {month}")
 
-    for ax in axes.flat[len(months):]:
+    for ax in axes.flat[len(months) :]:
         ax.set_axis_off()
 
     cmap, norm, sm, ticks, step = build_colormap(

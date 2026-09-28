@@ -7,7 +7,7 @@ import isku
 
 load_dotenv()
 
-#DATA_DIR = os.environ["DATA_DIR"]
+# DATA_DIR = os.environ["DATA_DIR"]
 TAS_FORECAST_URI = os.environ["POREALLAS_TAS_FORECAST_URI"]
 ERA5_URI = os.environ["POREALLAS_ERA5_URI"]
 GAMMA_URI = os.environ["POREALLAS_GAMMA_URI"]
@@ -34,6 +34,7 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
     # # TODO: send bug upstream?
     regions = isku.GridWeightingRegions(_region_weights)  # ty: ignore[invalid-argument-type]
     return regions
+
 
 # TODO: Reference self.polygon data
 def grid_to_ir(data, savefile=None):
