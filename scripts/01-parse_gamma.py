@@ -8,6 +8,7 @@ These gammas are pre-created so the projection system itself can be deterministi
 
 import csv
 import datetime
+import os
 import re
 import uuid
 
@@ -32,10 +33,10 @@ print(
 # Download and unpack https://zenodo.org/records/6416119/files/data.zip?download=1.
 # Beware, it's ~35 GiB.
 # This is the file at ./data/2_projection/3_impacts/main_specification/inputs/Agespec_interaction_GMFD_POLY-4_TINV_CYA_NW_w1.csvv within the downloaded data.
-CSVV_URI = "./data/Agespec_interaction_GMFD_POLY-4_TINV_CYA_NW_w1.csvv"
-OUT_ZARR = "gamma_1000.zarr"
+CSVV_URI = "./data/raw/Agespec_interaction_GMFD_POLY-4_TINV_CYA_NW_w1.csvv"
+OUT_ZARR = os.getenv("POREALLAS_GAMMA_URI")
 SEED = 42  # Keep seed 42 for consistency across draws
-N_SAMPLES = 1000
+N_SAMPLES = 100
 
 # NOTE: If you change these, you will likely need to change the structure of the output Dataset.
 N_AGE_COHORT = 3
