@@ -63,6 +63,6 @@ Data downloads from Copernicus CDS (https://cds.climate.copernicus.eu/) require 
 
 This is open-source software made available under the terms of the Apache License 2.0.
 
-This repository is available online at https://github.com/brews/poreallas.
+This repository is available online at https://github.com/ClimateImpactLab/poreallas.
 
-Please file issues in the project's [issue tracker](https://github.com/brews/poreallas/issues).
+Please file issues in the project's [issue tracker](https://github.com/ClimateImpactLab/poreallas/issues).
