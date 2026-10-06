@@ -2,22 +2,18 @@
 # ### Emily Zuetell
 ### July 7, 2026
 
-import xarray as xr
-import pandas as pd
-import geopandas as gpd
-import numpy as np
-
-import scipy.stats as stats
-
-from functools import lru_cache
-import regionmask
-import geodatasets
+from dataclasses import dataclass
+from functools import cache
 
 import cil_regionalization as cilreg
+import geodatasets
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import regionmask
+import xarray as xr
 from cil_regionalization.config import SourceUnitPolicies
-
-
-from dataclasses import dataclass
+from scipy import stats
 
 
 @dataclass
@@ -125,7 +121,7 @@ def pop_weight_sum(da, config, impact=True):
 def compute_impact(
     projected,
     config,
-    chunks={"number": -1, "sample": -1, "region": "auto"},
+    chunks=None,
     ensemble=False,
     hotonly=None,
 ):
@@ -158,6 +154,9 @@ def compute_impact(
     ValueError
         If the resolved hotonly value is not one of "net", "hotonly", or "coldonly".
     """
+    if chunks is None:
+        chunks = {"number": -1, "sample": -1, "region": "auto"}
+
     # Per-call override takes priority over the config default (helpful for multi-option plotting)
     hotonly = hotonly if hotonly is not None else config.hotonly
 
@@ -482,8 +481,11 @@ def make_csv(
     config: ImpactConfig,
     group_level="IR",
     filename_template="{version}_{hotonly}_{scope}_{rate_l}_{stat_scope}_{group_level}_{baseline}_{cleaned}.csv",
-    output_scope=["regional_monthly", "regional_6mo", "global_monthly", "global_6mo"],
+    output_scope=None,
 ):
+    if output_scope is None:
+        output_scope = ["regional_monthly", "regional_6mo", "global_monthly", "global_6mo"]
+
     rate_l = "rate" if config.rate else "total"
     baseline_tag = _baseline_tag(config.baseline_period)
 
@@ -649,13 +651,13 @@ def make_csv(
 
 ##### Land Only #####
 # Get and store land data
-@lru_cache(maxsize=None)
+@cache
 def _get_land(crs):
     land = gpd.read_file(geodatasets.get_path("naturalearth land"))
     return land.cx[:, -60:90].to_crs(crs)
 
 
-@lru_cache(maxsize=None)
+@cache
 def _get_land_mask(lon_key, lat_key):
     dummy = xr.DataArray(
         np.zeros((len(lat_key), len(lon_key))),

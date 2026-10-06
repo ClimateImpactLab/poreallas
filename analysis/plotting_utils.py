@@ -1,10 +1,9 @@
 import math
 
-import numpy as np
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-
+import matplotlib.pyplot as plt
+import numpy as np
 from analysis_utils import _get_land, crossed_ttest
 
 DIVERGING_CMAPS = {
@@ -34,7 +33,7 @@ def add_polygons(
     agree = (np.sign(anom) == np.sign(ens_mean)).mean(member_dim)
     mask = (agree >= threshold).astype(float)
     # ccrs Transform
-    kw = dict(transform=transform) if transform is not None else {}
+    kw = {"transform": transform} if transform is not None else {}
 
     # Hatched fill over agreeing regions (fill itself is transparent)
     ax.contourf(
@@ -72,7 +71,7 @@ def add_region_polygons_vec(
     geoms = gpd.GeoSeries(
         anom["geometry"].values[confident], crs=anom.xvec.geom_coords["geometry"].crs
     )
-    kw = dict(transform=transform) if transform is not None else {}
+    kw = {"transform": transform} if transform is not None else {}
 
     # Hatched fill over agreeing regions (hatch color follows edgecolor)
     geoms.plot(ax=ax, facecolor="none", edgecolor="k", hatch=hatch, linewidth=0, **kw)
@@ -155,7 +154,7 @@ def make_cmap(bounds, cm="bwr"):
     cmap_base = plt.get_cmap(cm)
     colors = cmap_base(np.linspace(0, 1, len(bounds) - 1))
 
-    base_name = cm[:-2] if cm.endswith("_r") else cm
+    base_name = cm.removesuffix("_r")
     if base_name in DIVERGING_CMAPS:
         center_idx = len(colors) // 2
         colors[center_idx] = [0.95, 0.95, 0.95, 1]
@@ -168,7 +167,7 @@ def make_cmap(bounds, cm="bwr"):
 
 def build_colormap(gdf=None, col=None, cm="bwr", vmin=None, vmax=None, n_colors=None):
     # Build discrete colormap, branching on diverging vs sequential
-    base_name = cm[:-2] if cm.endswith("_r") else cm
+    base_name = cm.removesuffix("_r")
 
     if base_name in DIVERGING_CMAPS:
         # Symmetric around zero, with a white center band
@@ -338,7 +337,7 @@ def plot_monthly(
     for ax in axes.flat[len(months) :]:
         ax.set_axis_off()
 
-    cmap, norm, sm, ticks, step = build_colormap(
+    _cmap, _norm, sm, ticks, _step = build_colormap(
         gdf, col, cm=cm, vmin=vmin, vmax=vmax, n_colors=n_colors
     )
     fig.colorbar(

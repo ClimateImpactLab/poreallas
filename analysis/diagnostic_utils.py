@@ -1,7 +1,7 @@
 import os
-from dotenv import load_dotenv
 
 import numpy as np
+from dotenv import load_dotenv
 
 load_dotenv()
 
