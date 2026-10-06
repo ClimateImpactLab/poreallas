@@ -77,23 +77,29 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
 
 
 def main():
-    reanalysis = xr.load_dataset(ERA5_URI)
-    forecast_ensemble = xr.load_dataset(TAS_FORECAST_URI)
+    reanalysis = xr.open_dataset(
+        ERA5_URI, engine="zarr", chunks={"time": -1, "lat": 46, "lon": 92}
+    )
+
+    forecast_ensemble = xr.open_dataset(TAS_FORECAST_URI, engine="zarr", chunks={})
+
     regions = read_regions(REGIONS_URI)
-    socioeconomics = xr.load_dataset(SOCIOECONOMICS_URI)
-    gammas = xr.load_dataset(GAMMA_URI)
+
+    socioeconomics = xr.open_dataset(SOCIOECONOMICS_URI, engine="zarr", chunks={})
+
+    gammas = xr.open_dataset(GAMMA_URI, engine="zarr", chunks={})
 
     # Last months of forecast often missing significant number of days. Remove these ragged months.
     forecast_ensemble = trim_ragged_months(forecast_ensemble)
 
     # Transform gridded data, extracting regional data needed for projections.
     histogram_hist_tas = isku.extract_regions(
-        reanalysis,
+        reanalysis.chunk({"time": -1}),
         template=make_tas_monthly_histogram,
         regions=regions,
     )
     histogram_forecast_tas = isku.extract_regions(
-        forecast_ensemble,
+        forecast_ensemble.chunk({"time": -1}),
         template=make_tas_monthly_histogram,
         regions=regions,
     )
@@ -175,9 +181,7 @@ def main():
         )
         .unify_chunks()
     )
-    projected_forecast = isku.project(
-        forecast_input, model=mortality_effect_model
-    ).compute()
+    projected_forecast = isku.project(forecast_input, model=mortality_effect_model)
     projected_forecast["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality",
@@ -205,7 +209,7 @@ def main():
     )
     projected_forecast_hotonly = isku.project(
         forecast_input, model=mortality_effect_model
-    ).compute()
+    )
     projected_forecast_hotonly["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Hot temperature mortality",
@@ -233,7 +237,7 @@ def main():
     )
     projected_forecast_coldonly = isku.project(
         forecast_input, model=mortality_effect_model
-    ).compute()
+    )
     projected_forecast_coldonly["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Cold temperature mortality",
@@ -241,10 +245,14 @@ def main():
 
     # Now do the baseline period.
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
+    # Rechunk histogram_hist_tas
+    hist = histogram_hist_tas["histogram_tas"].chunk(
+        {"region": 500, "time": -1, "tas_bin": -1}
+    )
     hist_input = (
         xr.Dataset(
             {
-                "histogram_tas": histogram_hist_tas["histogram_tas"],
+                "histogram_tas": hist,
                 "beta": fixed_beta["beta"],
             }
         )
@@ -259,7 +267,7 @@ def main():
         )
         .unify_chunks()
     )
-    projected_hist = isku.project(hist_input, model=mortality_effect_model).compute()
+    projected_hist = isku.project(hist_input, model=mortality_effect_model)
     projected_hist["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality",
@@ -268,7 +276,7 @@ def main():
     hist_input = (
         xr.Dataset(
             {
-                "histogram_tas": histogram_hist_tas["histogram_tas"],
+                "histogram_tas": hist,
                 "beta": fixed_beta["beta_hotonly"],
             }
         )
@@ -283,9 +291,7 @@ def main():
         )
         .unify_chunks()
     )
-    projected_hist_hotonly = isku.project(
-        hist_input, model=mortality_effect_model
-    ).compute()
+    projected_hist_hotonly = isku.project(hist_input, model=mortality_effect_model)
     projected_hist_hotonly["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Hot temperature mortality",
@@ -310,9 +316,7 @@ def main():
         )
         .unify_chunks()
     )
-    projected_hist_coldonly = isku.project(
-        hist_input, model=mortality_effect_model
-    ).compute()
+    projected_hist_coldonly = isku.project(hist_input, model=mortality_effect_model)
     projected_hist_coldonly["effect"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Cold temperature mortality",
