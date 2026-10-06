@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATA_DIR = os.environ["DATA_DIR"]
+# DATA_DIR = os.environ["DATA_DIR"]
 TAS_FORECAST_URI = os.environ["POREALLAS_TAS_FORECAST_URI"]
 ERA5_URI = os.environ["POREALLAS_ERA5_URI"]
 GAMMA_URI = os.environ["POREALLAS_GAMMA_URI"]
@@ -35,13 +35,14 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
     return regions
 
 
+# TODO: Reference self.polygon data
 def grid_to_ir(data, savefile=None):
     if "longitude" in data.dims:
         if data["longitude"].min() >= 0:
             data = lon_adjust(data)
         else:
             data = lon_adjust(data, roll=False)
-    regions = read_regions(os.path.join(DATA_DIR, REGIONS_URI))
+    regions = read_regions(REGIONS_URI)
     data_ir = isku.extract_regions(
         data,
         template=do_nothing_func,
