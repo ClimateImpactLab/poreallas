@@ -1,6 +1,6 @@
 [project]
 name = "poreallas"
-version = "0.5.2"
+version = "0.7.0"
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -34,7 +34,7 @@ build-backend = "uv_build"
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
-    "ruff>=0.15.15",
+    "ruff>=0.16.0",
     "ty>=0.0.40",
 ]
 

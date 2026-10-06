@@ -1,7 +1,7 @@
 import os
 
-from dotenv import load_dotenv
 import geopandas as gpd
+from dotenv import load_dotenv
 
 load_dotenv()
 

@@ -54,7 +54,7 @@ from the root of this repository.
 
 If you do not already have access to parsed input data you will need to download and clean input data, running the scripts in `./scripts/` in ordered sequence. This creates and populates input data in the `./data/` directory. Note this requires downloading and processing a significant amount of data. Some steps will require access to a daskhub cluster. This will be noted in script comments and documentation.
 
-Data downloads and processing for the prototype were run in the last week of August, 2026.
+Data downloads and processing for the prototype were run in the last week of August, 2026, and the second week of September, 2026.
 
 Data downloads from Copernicus CDS (https://cds.climate.copernicus.eu/) require an ECMWF account. You will need to configure `cdsapi` with you account credentials (see https://github.com/ecmwf/cdsapi).
 
@@ -63,6 +63,6 @@ Data downloads from Copernicus CDS (https://cds.climate.copernicus.eu/) require 
 
 This is open-source software made available under the terms of the Apache License 2.0.
 
-This repository is available online at https://github.com/brews/poreallas.
+This repository is available online at https://github.com/ClimateImpactLab/poreallas.
 
-Please file issues in the project's [issue tracker](https://github.com/brews/poreallas/issues).
+Please file issues in the project's [issue tracker](https://github.com/ClimateImpactLab/poreallas/issues).

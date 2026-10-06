@@ -4,8 +4,9 @@ import datetime
 import os
 import uuid
 
-from dotenv import load_dotenv
 import xarray as xr
+from dask.diagnostics import ProgressBar
+from dotenv import load_dotenv
 from xsdba.adjustment import QuantileDeltaMapping, TrainAdjust
 from xsdba.base import Grouper
 
@@ -113,8 +114,8 @@ ref = ref.sel(time=hist["time"])
 
 # Rechunking because all of "time", or whatever we're grouping QDM on, needs to be in one chunk.
 ref = ref.chunk({"time": -1})
-hist = hist.chunk({"number": -1, "time": -1, "latitude": "30", "longitude": "auto"})
-sim = sim.chunk({"number": -1, "time": -1, "latitude": "30", "longitude": "auto"})
+hist = hist.chunk({"number": -1, "time": -1, "lat": "30", "lon": "auto"})
+sim = sim.chunk({"number": -1, "time": -1, "lat": "30", "lon": "auto"})
 
 # Train QDM and adjust the forecast ensemble, for the months in the forecast ensemble.
 sim_adj = adjust_months(
@@ -159,5 +160,11 @@ sim_adj["tas"].attrs |= {
 
 sim_adj = sim_adj.chunk("auto")
 
-sim_adj.to_zarr(OUT_ZARR, consolidated=True)
+# Calculations are lazy up to this point so this is where the calculations
+# actually happen. It can take a long time (maybe hours), with little user feedback,
+# so we're putting a rough progress bar here. This assumes a local dask
+# scheduler is used.
+with ProgressBar():
+    sim_adj.to_zarr(OUT_ZARR, consolidated=True)
+
 print(f"Output written to {OUT_ZARR}")

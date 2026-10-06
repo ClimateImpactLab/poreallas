@@ -12,11 +12,11 @@ import os
 import re
 import uuid
 
-from dotenv import load_dotenv
 import fsspec
 import metacsv
 import numpy as np
 import xarray as xr
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -179,7 +179,7 @@ def main():
     g.attrs["created_at"] = START_TIME
 
     g = g.chunk({"sample": 1})
-    g.to_zarr(OUT_ZARR, consolidated=False)
+    g.to_zarr(OUT_ZARR, consolidated=True)
     print(f"Written to {OUT_ZARR}")
 
 

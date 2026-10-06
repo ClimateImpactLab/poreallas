@@ -9,7 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- General documentation improvement, updates ([@brews](https://github.com/brews), [PR#36](https://github.com/ClimateImpactLab/poreallas/pull/36))
+- Improvements to functionality, structure, and validation. May cause some backwards compatibility issues with existing analysis notebooks. ([@ezuetell](https://github.com/ezuetell), [PR#67](https://github.com/ClimateImpactLab/poreallas/pull/67))
+- Format update to keep the ruff >= v0.16.0 overlords happy. ([@brews](https://github.com/brews), [PR#65](https://github.com/ClimateImpactLab/poreallas/pull/65))
+
+## [0.7.0] - 2026-09-09
+
+### Changed
+
+- Add `/fixed_beta` to output data store from `scripts/05-project_effects.py`. ([@brews](https://github.com/brews), [PR#63](https://github.com/ClimateImpactLab/poreallas/pull/63))
+
+- Update scripts to use new September ECMWF forecasts by default. ([@brews](https://github.com/brews), [PR#62](https://github.com/ClimateImpactLab/poreallas/pull/62))
+
+## [0.6.0] - 2026-09-03
+
+### Added
+
+- Progress bar for forecast QDM script. ([@brews](https://github.com/brews), [PR#54](https://github.com/ClimateImpactLab/poreallas/pull/54))
+
+- Testing for tas monthly histogram region extraction. ([@brews](https://github.com/brews), [PR#48](https://github.com/ClimateImpactLab/poreallas/pull/48))
+
+### Changed
+
+- BREAKING: Tidy, move parsing from project effects scripts to parsing scripts. ([@brews](https://github.com/brews), [PR#57](https://github.com/ClimateImpactLab/poreallas/pull/57), [PR#58](https://github.com/ClimateImpactLab/poreallas/pull/58), [PR#59](https://github.com/ClimateImpactLab/poreallas/pull/59), [PR#60](https://github.com/ClimateImpactLab/poreallas/pull/60))
+
+- BREAKING: Add one to GDPpc before log transfromation to avoid dividing by zero. ([@brews](https://github.com/brews), [PR#55](https://github.com/ClimateImpactLab/poreallas/pull/55))
+
+- BREAKING: Rename pre-processing scripts for consistency, clarity. ([@brews](https://github.com/brews), [PR#53](https://github.com/ClimateImpactLab/poreallas/pull/53))
+
+- BREAKING: Write parsed gamma, weights, socioeconomics with consolitdated metadata. ([@brews](https://github.com/brews), [PR#56](https://github.com/ClimateImpactLab/poreallas/pull/56))
+
+- General documentation improvement, updates. ([@brews](https://github.com/brews), [PR#36](https://github.com/ClimateImpactLab/poreallas/pull/36))
 
 - Minor improvements to script readability. ([@brews](https://github.com/brews), [7d008e9](https://github.com/ClimateImpactLab/poreallas/commit/7d008e93efe9a044a57aba2ac52fb3f2a29630de))
 
@@ -67,7 +96,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial running prototype.
 
-[Unreleased]: https://github.com/climateimpactlab/poreallas/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/climateimpactlab/poreallas/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/climateimpactlab/poreallas/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/climateimpactlab/poreallas/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/climateimpactlab/poreallas/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/climateimpactlab/poreallas/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/climateimpactlab/poreallas/compare/v0.4.0...v0.5.0

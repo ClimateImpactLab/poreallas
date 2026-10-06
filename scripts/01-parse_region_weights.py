@@ -1,7 +1,7 @@
 import os
 
-from dotenv import load_dotenv
 import pandas as pd
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -18,5 +18,5 @@ sw = sw.to_xarray().rename_vars(
 # Have trouble interpreting cell_ix as data array when writing to zarr store so dropping.
 sw = sw.drop_vars(["cell_ix", "cell_iy"])
 
-sw.to_zarr(OUT_ZARR, consolidated=False)
+sw.to_zarr(OUT_ZARR, consolidated=True)
 print(f"Written to {OUT_ZARR}")

@@ -11,10 +11,10 @@ import os
 import uuid
 
 import dask
-from dask_gateway import GatewayCluster  # type: ignore[ty:unresolved-import]
-from dotenv import load_dotenv
 import xarray as xr
 import xesmf as xe  # type: ignore[ty:unresolved-import]
+from dask_gateway import GatewayCluster  # type: ignore[ty:unresolved-import]
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -60,6 +60,22 @@ def open_gmfd(file_pattern: str, start_year: int, stop_year: int) -> xr.Dataset:
     return gmfd
 
 
+def standardize_latlon(ds: xr.Dataset) -> xr.Dataset:
+    """Harmonize latitude and longitude coordinates, returning a copy of the input dataset
+
+    Input data with longitude from 0 to 360 is transformed to go from -180 to
+    180 in ascending order. The "latitude" and "longitude" coordinates are renamed
+    to "lat" and "lon", respectively.
+    """
+    _ds = ds.copy()
+
+    _ds["longitude"] = (_ds["longitude"] + 180) % 360 - 180
+    _ds = _ds.sortby("longitude")
+    _ds = _ds.rename({"latitude": "lat", "longitude": "lon"})
+
+    return _ds
+
+
 dask.config.set({"distributed.comm.timeouts.connect": "60s"})
 cluster = GatewayCluster(worker_image=JUPYTER_IMAGE, scheduler_image=JUPYTER_IMAGE)
 client = cluster.get_client()
@@ -84,6 +100,9 @@ regridder = xe.Regridder(gmfd, regrid_target, method="bilinear", periodic=True)
 gmfd_regrid = regridder(gmfd)
 gmfd_regrid.attrs |= gmfd.attrs
 
+# Transform lat/lon coords for later projection.
+gmfd_regrid = standardize_latlon(gmfd_regrid)
+
 # Metadata on units is required later in the workflow.
 gmfd_regrid["tas"].attrs["units"] = "K"
 
@@ -100,7 +119,7 @@ gmfd_regrid["tas"].attrs |= {
 }
 
 # All of time needs to be in a single chunk for QDM bias adjustment.
-gmfd_regrid = gmfd_regrid.chunk({"time": -1, "latitude": 30, "longitude": "auto"})
+gmfd_regrid = gmfd_regrid.chunk({"time": -1, "lat": 30, "lon": "auto"})
 
 gmfd_regrid.to_zarr(OUT_ZARR, consolidated=True)
 print(f"Output written to {OUT_ZARR}")

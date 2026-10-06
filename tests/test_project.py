@@ -10,10 +10,10 @@ import pytest
 import xarray as xr
 
 from poreallas.project import (
-    mortality_effect_model,
-    uclip,
     _uclip_gufunc,
     calculate_beta,
+    mortality_effect_model,
+    uclip,
 )
 
 
