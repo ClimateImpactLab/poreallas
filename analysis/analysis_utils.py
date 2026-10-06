@@ -484,7 +484,12 @@ def make_csv(
     output_scope=None,
 ):
     if output_scope is None:
-        output_scope = ["regional_monthly", "regional_6mo", "global_monthly", "global_6mo"]
+        output_scope = [
+            "regional_monthly",
+            "regional_6mo",
+            "global_monthly",
+            "global_6mo",
+        ]
 
     rate_l = "rate" if config.rate else "total"
     baseline_tag = _baseline_tag(config.baseline_period)
