@@ -7,6 +7,8 @@ import pandas as pd
 import geopandas as gpd
 import numpy as np
 
+import scipy.stats as stats
+
 from functools import lru_cache
 import regionmask
 import geodatasets
@@ -156,15 +158,24 @@ def compute_impact(
     ValueError
         If the resolved hotonly value is not one of "net", "hotonly", or "coldonly".
     """
-    # Per-call override takes priority over the config default
+    # Per-call override takes priority over the config default (helpful for multi-option plotting)
     hotonly = hotonly if hotonly is not None else config.hotonly
 
     # Check for valid chunks based on dims present
-    valid_chunks = {
-        k: v
-        for k, v in chunks.items()
-        if k in projected["/forecast_hotonly"]["effect"].dims
+    # Find datatree leaves
+    effect_dims = {
+        dim
+        for node in projected.subtree
+        if "effect" in node.data_vars
+        for dim in node["effect"].dims
     }
+    if not effect_dims:
+        raise ValueError(
+            "No 'effect' variable found in any node of the input DataTree."
+        )
+
+    valid_chunks = {k: v for k, v in chunks.items() if k in effect_dims}
+
     # Check validity of "hotonly" item
     valid_terms = ["net", "hotonly", "coldonly"]
     if hotonly not in valid_terms:
@@ -267,6 +278,36 @@ def compute_stats(da, dim="number"):
             "p90": p90,
         }
     )
+
+
+def crossed_ttest(d, member_dim="number", sample_dim="sample"):
+    """Crossed-design test of mean(d) = 0 over member_dim x sample_dim,
+    vectorized over any remaining dims (e.g. region). Returns t, df, p as DataArrays."""
+    M, N = d.sizes[member_dim], d.sizes[sample_dim]
+    both = [member_dim, sample_dim]
+    # grand mean
+    g = d.mean(both)
+    # member means
+    rm = d.mean(sample_dim)
+    # sample means
+    cn = d.mean(member_dim)
+    # MN * var(g)
+    ms_a = N * rm.var(member_dim, ddof=1)
+    ms_c = M * cn.var(sample_dim, ddof=1)
+    resid = d - rm - cn + g
+    ms_e = resid.var(both, ddof=M + N - 1)
+    # Check for negative ms_a, ms_c values
+    ms_a, ms_c = np.maximum(ms_a, ms_e), np.maximum(ms_c, ms_e)
+    # MN * var
+    num = ms_a + ms_c - ms_e
+    # t-statistic
+    # g/sqrt(var)
+    t = g / np.sqrt(num / (M * N))
+    # effective degrees of freedom
+    df = min(M - 1, N - 1)
+    # p-value (two-sided)
+    p = xr.apply_ufunc(lambda t, df: 2 * stats.t.sf(np.abs(t), df), t, df)
+    return p
 
 
 def merge_polygon_stats(stats_ds, polygon, merge_key="region"):
@@ -451,7 +492,6 @@ def make_csv(
     )
     impact = impact.sel(month=config.months)
 
-    polygon = config.polygons
     # Aggregate Impact Regions to group_level
     impact, merge_key, base_cols = aggregate_impact(impact, config, group_level)
 

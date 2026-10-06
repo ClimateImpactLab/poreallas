@@ -5,7 +5,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
-from analysis_utils import _get_land
+from analysis_utils import _get_land, crossed_ttest
 
 DIVERGING_CMAPS = {
     "bwr",
@@ -17,6 +17,73 @@ DIVERGING_CMAPS = {
     "PRGn",
     "BrBG",
 }
+
+
+def add_polygons(
+    ax,
+    anom,
+    threshold=0.8,
+    member_dim="number",
+    hatch="///",
+    outline=True,
+    transform=None,
+):
+    # Add confidence polygon at gridded map
+    ens_mean = anom.mean(member_dim)
+    # Fraction of members whose anomaly sign matches the ensemble-mean sign
+    agree = (np.sign(anom) == np.sign(ens_mean)).mean(member_dim)
+    mask = (agree >= threshold).astype(float)
+    # ccrs Transform
+    kw = dict(transform=transform) if transform is not None else {}
+
+    # Hatched fill over agreeing regions (fill itself is transparent)
+    ax.contourf(
+        anom.lon,
+        anom.lat,
+        mask,
+        levels=[0.5, 1.5],
+        colors="none",
+        hatches=[hatch],
+        **kw,
+    )
+
+    # Polygon boundaries
+    if outline:
+        ax.contour(
+            anom.lon, anom.lat, mask, levels=[0.5], colors="k", linewidths=0.7, **kw
+        )
+
+    return agree
+
+
+def add_region_polygons_vec(
+    ax,
+    anom,
+    threshold=0.05,
+    member_dim="sample",
+    hatch="///",
+    outline=True,
+    transform=None,
+):
+    # Same sign-agreement calculation, now per region instead of per grid cell
+    p = crossed_ttest(anom.compute())
+    confident = (p >= threshold).values
+
+    geoms = gpd.GeoSeries(
+        anom["geometry"].values[confident], crs=anom.xvec.geom_coords["geometry"].crs
+    )
+    kw = dict(transform=transform) if transform is not None else {}
+
+    # Hatched fill over agreeing regions (hatch color follows edgecolor)
+    geoms.plot(ax=ax, facecolor="none", edgecolor="k", hatch=hatch, linewidth=0, **kw)
+
+    # Outer boundary of the agreeing area, with internal region borders dissolved
+    if outline and len(geoms):
+        gpd.GeoSeries([geoms.union_all().boundary]).plot(
+            ax=ax, color="k", linewidth=0.3, **kw
+        )
+
+    return p
 
 
 def build_stats_text(da, dim=None, fmt="{:.2f}"):
