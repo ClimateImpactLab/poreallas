@@ -6,10 +6,10 @@ import cdsapi
 
 dataset = "derived-era5-single-levels-daily-statistics"
 request = {
-    "product_type": "ensemble_members",
+    "product_type": "reanalysis",
     "variable": ["2m_temperature"],
     "year": "2026",
-    "month": ["01", "02", "03", "04", "05", "06", "07", "08"],
+    "month": ["01", "02", "03", "04", "05", "06", "07", "08", "09"],
     "day": [
         "01", "02", "03",
         "04", "05", "06",
@@ -29,13 +29,13 @@ request = {
 }
 
 client = cdsapi.Client()
-client.retrieve(dataset, request, "./data/raw/26_era5_daily_max_ens.nc")
+client.retrieve(dataset, request, "./data/raw/26_era5_daily_max.nc")
 
 request = {
-    "product_type": "ensemble_members",
+    "product_type": "reanalysis",
     "variable": ["2m_temperature"],
     "year": "2026",
-    "month": ["01", "02", "03", "04", "05", "06", "07", "08"],
+    "month": ["01", "02", "03", "04", "05", "06", "07", "08", "09"],
     "day": [
         "01", "02", "03",
         "04", "05", "06",
@@ -55,4 +55,4 @@ request = {
 }
 
 client = cdsapi.Client()
-client.retrieve(dataset, request, "./data/raw/26_era5_daily_min_ens.nc")
+client.retrieve(dataset, request, "./data/raw/26_era5_daily_min.nc")
