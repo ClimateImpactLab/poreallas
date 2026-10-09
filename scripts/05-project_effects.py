@@ -9,6 +9,7 @@ import uuid
 import isku
 import numpy as np
 import xarray as xr
+from dask.diagnostics.progress import ProgressBar
 from dotenv import load_dotenv
 
 from poreallas.extract import make_climtas, make_tas_monthly_histogram
@@ -53,10 +54,7 @@ def trim_ragged_months(
     n_qualifying_months = qualifying_months[datetime_dim].size
 
     print(
-        f"continuing with {n_qualifying_months} of {n_initial_months} forecast months after removing incomplete months"
-    )
-    print(
-        f"continuing with {n_current} of {n_initial} forecast periods after removing incomplete months"
+        f"continuing with {n_qualifying_months} of {n_initial_months} forecast months after removing incomplete months, specifically, {n_current} of {n_initial} forecast periods after removing incomplete months"
     )
 
     assert (n_qualifying_months - n_initial_months) < 2, (
@@ -77,16 +75,10 @@ def read_regions(uri: str) -> isku.GridWeightingRegions:
 
 
 def main():
-    reanalysis = xr.open_dataset(
-        ERA5_URI, engine="zarr", chunks={"time": -1, "lat": 46, "lon": 92}
-    )
-
+    reanalysis = xr.open_dataset(ERA5_URI, engine="zarr", chunks={})
     forecast_ensemble = xr.open_dataset(TAS_FORECAST_URI, engine="zarr", chunks={})
-
     regions = read_regions(REGIONS_URI)
-
     socioeconomics = xr.open_dataset(SOCIOECONOMICS_URI, engine="zarr", chunks={})
-
     gammas = xr.open_dataset(GAMMA_URI, engine="zarr", chunks={})
 
     # Last months of forecast often missing significant number of days. Remove these ragged months.
@@ -94,12 +86,12 @@ def main():
 
     # Transform gridded data, extracting regional data needed for projections.
     histogram_hist_tas = isku.extract_regions(
-        reanalysis.chunk({"time": -1}),
+        reanalysis,
         template=make_tas_monthly_histogram,
         regions=regions,
     )
     histogram_forecast_tas = isku.extract_regions(
-        forecast_ensemble.chunk({"time": -1}),
+        forecast_ensemble,
         template=make_tas_monthly_histogram,
         regions=regions,
     )
@@ -118,6 +110,7 @@ def main():
     # log(GDPpc + 1), the + 1 prevents warning about undefined behavior when log is fed a GDPpc of 0.
     loggdppc = np.log(socioeconomics["gdppc"].sel(year=2023, drop=True) + 1)
 
+    print("Preparing static beta calculation...")  # DEBUG
     # Calculate a fixed response function, i.e. beta.
     # Single, static response function with no adaptation is used for both projections.
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
@@ -137,12 +130,12 @@ def main():
                 "tas_bin": -1,  # This also needs to be all in memory.
                 "age_cohort": 1,  # We're doing all age_cohorts at once but could be done one-by-one.
                 "degree": -1,  # For gammas and polynomial calculations. Should all be in memory.
-                "sample": 1,  # Dimension for gamma draws. Having them in memory or not is not strictly required.
+                "sample": 10,  # Dimension for gamma draws. Having them in memory or not is not strictly required.
             },
         )
         .unify_chunks()
     )
-    fixed_beta = calculate_beta(beta_input).astype("float32").compute()
+    fixed_beta = calculate_beta(beta_input).astype("float32")
     fixed_beta["beta"].attrs = {
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality rate",
@@ -158,9 +151,19 @@ def main():
         fixed_beta["tas_bin"] < fixed_beta["mmt"], other=0
     )
     fixed_beta["beta_coldonly"].attrs["long_name"] = "Cold temperature mortality rate"
+    print("Prepared static beta calculation")  # DEBUG
 
     # Project mortality.
     # Start with forecast ensemble.
+    print("Preparing forecast projection calculation...")  # DEBUG
+    forecast_chunks = {
+        "region": 600,  # "auto" is a sensible default.
+        "time": -1,
+        "tas_bin": -1,
+        "age_cohort": 1,
+        "number": 10,
+        "sample": 10,
+    }
     forecast_input = (
         xr.Dataset(
             {
@@ -169,16 +172,7 @@ def main():
             }
         )
         .dropna(dim="region")
-        .chunk(
-            {
-                "region": "auto",  # "auto" is a sensible default.
-                "time": -1,
-                "tas_bin": -1,
-                "age_cohort": 1,
-                "number": 1,
-                "sample": 1,
-            },
-        )
+        .chunk(forecast_chunks)
         .unify_chunks()
     )
     projected_forecast = isku.project(forecast_input, model=mortality_effect_model)
@@ -196,15 +190,7 @@ def main():
             }
         )
         .dropna(dim="region")
-        .chunk(
-            {
-                "region": "auto",  # "auto" is a sensible default.
-                "time": -1,
-                "tas_bin": -1,
-                "age_cohort": 1,
-                "number": 1,
-            },
-        )
+        .chunk(forecast_chunks)
         .unify_chunks()
     )
     projected_forecast_hotonly = isku.project(
@@ -224,15 +210,7 @@ def main():
             }
         )
         .dropna(dim="region")
-        .chunk(
-            {
-                "region": "auto",  # "auto" is a sensible default.
-                "time": -1,
-                "tas_bin": -1,
-                "age_cohort": 1,
-                "number": 1,
-            },
-        )
+        .chunk(forecast_chunks)
         .unify_chunks()
     )
     projected_forecast_coldonly = isku.project(
@@ -242,29 +220,29 @@ def main():
         "units": "deaths per 100,000 people",
         "long_name": "Cold temperature mortality",
     }
+    print("Prepared forecast projection calculation")  # DEBUG
 
     # Now do the baseline period.
     # Stick everything together and make sure it aligns and matches. Rechunk all together. Also drop any regions with NaNs.
     # Rechunk histogram_hist_tas
-    hist = histogram_hist_tas["histogram_tas"].chunk(
-        {"region": 500, "time": -1, "tas_bin": -1}
-    )
+    print("Preparing baseline projection calculation...")  # DEBUG
+    hist_chunks = {
+        "region": 600,  # "auto" is a sensible default, but we're setting this to int specifically to work around an issue where baseline/hist chunks don't get unified. Likely an upstream bug.
+        "time": -1,
+        "tas_bin": -1,
+        "age_cohort": 1,
+        "sample": 10,
+    }
+
     hist_input = (
         xr.Dataset(
             {
-                "histogram_tas": hist,
+                "histogram_tas": histogram_hist_tas["histogram_tas"],
                 "beta": fixed_beta["beta"],
             }
         )
         .dropna(dim="region")
-        .chunk(
-            {
-                "region": "auto",  # "auto" is a sensible default.
-                "time": -1,
-                "tas_bin": -1,
-                "age_cohort": 1,
-            },
-        )
+        .chunk(hist_chunks)
         .unify_chunks()
     )
     projected_hist = isku.project(hist_input, model=mortality_effect_model)
@@ -272,23 +250,17 @@ def main():
         "units": "deaths per 100,000 people",
         "long_name": "Temperature mortality",
     }
+
     # Now hot-only projection
     hist_input = (
         xr.Dataset(
             {
-                "histogram_tas": hist,
+                "histogram_tas": histogram_hist_tas["histogram_tas"],
                 "beta": fixed_beta["beta_hotonly"],
             }
         )
         .dropna(dim="region")
-        .chunk(
-            {
-                "region": "auto",  # "auto" is a sensible default.
-                "time": -1,
-                "tas_bin": -1,
-                "age_cohort": 1,
-            },
-        )
+        .chunk(hist_chunks)
         .unify_chunks()
     )
     projected_hist_hotonly = isku.project(hist_input, model=mortality_effect_model)
@@ -306,14 +278,7 @@ def main():
             }
         )
         .dropna(dim="region")
-        .chunk(
-            {
-                "region": "auto",  # "auto" is a sensible default.
-                "time": -1,
-                "tas_bin": -1,
-                "age_cohort": 1,
-            },
-        )
+        .chunk(hist_chunks)
         .unify_chunks()
     )
     projected_hist_coldonly = isku.project(hist_input, model=mortality_effect_model)
@@ -321,18 +286,20 @@ def main():
         "units": "deaths per 100,000 people",
         "long_name": "Cold temperature mortality",
     }
+    print("Prepared baseline projection calculation")  # DEBUG
 
     # Collect everything and write to storage.
-    _out = {
-        "forecast": projected_forecast,
-        "baseline": projected_hist,
-        "forecast_hotonly": projected_forecast_hotonly,
-        "baseline_hotonly": projected_hist_hotonly,
-        "forecast_coldonly": projected_forecast_coldonly,
-        "baseline_coldonly": projected_hist_coldonly,
-        "fixed_beta": fixed_beta,
-    }
-    _out_dt = xr.DataTree.from_dict(_out)
+    _out_dt = xr.DataTree.from_dict(
+        {
+            "forecast": projected_forecast,
+            "baseline": projected_hist,
+            "forecast_hotonly": projected_forecast_hotonly,
+            "baseline_hotonly": projected_hist_hotonly,
+            "forecast_coldonly": projected_forecast_coldonly,
+            "baseline_coldonly": projected_hist_coldonly,
+            "fixed_beta": fixed_beta,
+        }
+    )
 
     # Add metadata
     _uid = str(uuid.uuid4())
@@ -415,7 +382,14 @@ def main():
     }
 
     if EFFECTS_URI is not None:
-        _out_dt.to_zarr(EFFECTS_URI, consolidated=True)
+        print(f"Calculating projected effects into {EFFECTS_URI}...")  # DEBUG
+        # Calculations are lazy up to this point so this is where the calculations
+        # actually happen. It can take a long time (maybe hours), with little user feedback,
+        # so we're putting a rough progress bar here. This assumes a local dask
+        # scheduler is used.
+        with ProgressBar():
+            _out_dt.to_zarr(EFFECTS_URI, consolidated=True)
+
         print(f"Effects written to {EFFECTS_URI}")
 
 
