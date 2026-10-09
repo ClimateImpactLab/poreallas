@@ -4,6 +4,7 @@ import geopandas as gpd
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
+
 from utils.analysis_utils import _get_land, crossed_ttest
 
 DIVERGING_CMAPS = {

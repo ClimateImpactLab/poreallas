@@ -255,9 +255,7 @@ def crossed_sem(da, a="number", b="sample"):
     resid = da - m_a - m_b + grand
     var_e = (resid**2).sum((a, b)) / ((na - 1) * (nb - 1))
 
-    var_mean = (m_a.var(a, ddof=1) / na
-                + m_b.var(b, ddof=1) / nb
-                - var_e / (na * nb))
+    var_mean = m_a.var(a, ddof=1) / na + m_b.var(b, ddof=1) / nb - var_e / (na * nb)
     return np.sqrt(var_mean.clip(min=0))
 
 
