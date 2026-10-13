@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils.analysis_utils import _get_land, crossed_ttest
+from utils.analysis_utils import _get_land
 
 DIVERGING_CMAPS = {
     "bwr",
@@ -21,69 +21,76 @@ DIVERGING_CMAPS = {
 
 def add_polygons(
     ax,
-    anom,
-    threshold=0.8,
-    member_dim="number",
+    mask,
     hatch="///",
+    hatch_color="k",
     outline=True,
+    outline_color="k",
+    outline_width=0.5,
     transform=None,
 ):
-    # Add confidence polygon at gridded map
-    ens_mean = anom.mean(member_dim)
-    # Fraction of members whose anomaly sign matches the ensemble-mean sign
-    agree = (np.sign(anom) == np.sign(ens_mean)).mean(member_dim)
-    mask = (agree >= threshold).astype(float)
-    # ccrs Transform
+    # Dispatch on mask type: xvec geometry index -> regions, lat/lon -> gridded
     kw = {"transform": transform} if transform is not None else {}
+    style = {
+        "hatch": hatch,
+        "hatch_color": hatch_color,
+        "outline": outline,
+        "outline_color": outline_color,
+        "outline_width": outline_width,
+    }
+    if "geometry" in mask.coords:
+        _hatch_regions(ax, mask, kw=kw, **style)
+    elif {"lat", "lon"} <= set(mask.coords):
+        _hatch_grid(ax, mask, kw=kw, **style)
+    else:
+        raise ValueError(
+            f"mask needs a 'geometry' coord or 'lat'/'lon' coords, got {list(mask.coords)}"
+        )
 
-    # Hatched fill over agreeing regions (fill itself is transparent)
-    ax.contourf(
-        anom.lon,
-        anom.lat,
-        mask,
-        levels=[0.5, 1.5],
-        colors="none",
-        hatches=[hatch],
-        **kw,
-    )
 
-    # Polygon boundaries
+def _hatch_grid(
+    ax, mask, hatch, hatch_color, outline, outline_color, outline_width, kw
+):
+    # contourf has no hatch-color argument; it reads rcParams at creation time
+    with plt.rc_context({"hatch.color": hatch_color}):
+        ax.contourf(
+            mask.lon,
+            mask.lat,
+            mask,
+            levels=[0.5, 1.5],
+            colors="none",
+            hatches=[hatch],
+            **kw,
+        )
     if outline:
         ax.contour(
-            anom.lon, anom.lat, mask, levels=[0.5], colors="k", linewidths=0.7, **kw
+            mask.lon,
+            mask.lat,
+            mask,
+            levels=[0.5],
+            colors=outline_color,
+            linewidths=outline_width,
+            **kw,
         )
 
-    return agree
 
-
-def add_region_polygons_vec(
-    ax,
-    anom,
-    threshold=0.05,
-    member_dim="sample",
-    hatch="///",
-    outline=True,
-    transform=None,
+def _hatch_regions(
+    ax, mask, hatch, hatch_color, outline, outline_color, outline_width, kw
 ):
-    # Same sign-agreement calculation, now per region instead of per grid cell
-    p = crossed_ttest(anom.compute())
-    confident = (p >= threshold).values
-
+    selected = mask.values.astype(bool)
     geoms = gpd.GeoSeries(
-        anom["geometry"].values[confident], crs=anom.xvec.geom_coords["geometry"].crs
+        mask["geometry"].values[selected], crs=mask.xvec.geom_coords["geometry"].crs
     )
-    kw = {"transform": transform} if transform is not None else {}
+    # Hatch color follows edgecolor; linewidth=0 hides the per-region borders
+    geoms.plot(
+        ax=ax, facecolor="none", edgecolor=hatch_color, hatch=hatch, linewidth=0, **kw
+    )
 
-    # Hatched fill over agreeing regions (hatch color follows edgecolor)
-    geoms.plot(ax=ax, facecolor="none", edgecolor="k", hatch=hatch, linewidth=0, **kw)
-
-    # Outer boundary of the agreeing area, with internal region borders dissolved
+    # Outer boundary of the masked area, with internal region borders dissolved
     if outline and len(geoms):
         gpd.GeoSeries([geoms.union_all().boundary]).plot(
-            ax=ax, color="k", linewidth=0.3, **kw
+            ax=ax, color=outline_color, linewidth=outline_width, **kw
         )
-
-    return p
 
 
 def build_stats_text(da, dim=None, fmt="{:.2f}"):
