@@ -592,16 +592,20 @@ def make_csv(
             ),
             index=False,
         )
-        print(f"regional_monthly saved to: {filename_template.format(
-                        version=config.version,
-                        hotonly=config.hotonly,
-                        rate_l=rate_l,
-                        scope="monthly",
-                        stat_scope="",
-                        group_level=group_level,
-                        baseline=baseline_tag,
-                        cleaned="rounded",
-                    )}")
+        print(
+            f"regional_monthly saved to: {
+                filename_template.format(
+                    version=config.version,
+                    hotonly=config.hotonly,
+                    rate_l=rate_l,
+                    scope='monthly',
+                    stat_scope='',
+                    group_level=group_level,
+                    baseline=baseline_tag,
+                    cleaned='rounded',
+                )
+            }"
+        )
 
     if "regional_6mo" in output_scope:
         print("Computing: regional_6mo")
@@ -635,16 +639,20 @@ def make_csv(
             ),
             index=False,
         )
-        print(f"regional_6mo saved to: {filename_template.format(
-                        version=config.version,
-                        hotonly=config.hotonly,
-                        rate_l=rate_l,
-                        scope="6mo",
-                        stat_scope="",
-                        group_level=group_level,
-                        baseline=baseline_tag,
-                        cleaned="rounded",
-                    )}")
+        print(
+            f"regional_6mo saved to: {
+                filename_template.format(
+                    version=config.version,
+                    hotonly=config.hotonly,
+                    rate_l=rate_l,
+                    scope='6mo',
+                    stat_scope='',
+                    group_level=group_level,
+                    baseline=baseline_tag,
+                    cleaned='rounded',
+                )
+            }"
+        )
 
     if "global_monthly" in output_scope or "global_6mo" in output_scope:
         # Compute global total before getting stats
