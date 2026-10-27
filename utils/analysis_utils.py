@@ -272,7 +272,7 @@ def crossed_sem(da, a="number", b="sample"):
         m_b = da.mean(a)
         # Sample residual
         resid = da - m_a - m_b + grand
-        # Residual Variance 
+        # Residual Variance
         var_e = (resid**2).sum((a, b)) / ((na - 1) * (nb - 1))
         # crossed se = sqrt(var(a)/na+var(b)/nb-var_e/(na*nb)) Note: Sample variance of var_a, var_b double count residual variance (-> subtraction)
         var_mean = m_a.var(a, ddof=1) / na + m_b.var(b, ddof=1) / nb - var_e / (na * nb)
