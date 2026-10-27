@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 OUT_ZARR = os.environ["POREALLAS_PARSED_FORECAST_URI"]
-RAW_FORECAST_FILE_PATTERN = "./data/raw/s51_hist_tasmin_tasmax/{var}-{year}-09.nc"
+RAW_FORECAST_FILE_PATTERN = "./data/raw/s51_hist_tasmin_tasmax/{var}-{year}-10.nc"
 START_YEAR = 1981
 STOP_YEAR = 2026  # This is the initializing year of the forecast.
 UID = str(uuid.uuid4())
