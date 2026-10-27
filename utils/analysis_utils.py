@@ -261,15 +261,20 @@ def xarray_to_gpd(data, polygons, crs="ESRI:54030"):
 
 
 def crossed_sem(da, a="number", b="sample"):
+    """
+    Compute the Standard Error across dimesnions (a, opt: b) of an xarray.
+    """
     if b is not None:
+        # Compute crossed standard error (study design for samples shared across all ensemble members)
         na, nb = da.sizes[a], da.sizes[b]
         grand = da.mean((a, b))
         m_a = da.mean(b)
         m_b = da.mean(a)
-
+        # Sample residual
         resid = da - m_a - m_b + grand
+        # Residual Variance 
         var_e = (resid**2).sum((a, b)) / ((na - 1) * (nb - 1))
-
+        # crossed se = sqrt(var(a)/na+var(b)/nb-var_e/(na*nb)) Note: Sample variance of var_a, var_b double count residual variance (-> subtraction)
         var_mean = m_a.var(a, ddof=1) / na + m_b.var(b, ddof=1) / nb - var_e / (na * nb)
         return np.sqrt(var_mean.clip(min=0))
     else:
