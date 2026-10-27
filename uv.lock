@@ -644,7 +644,7 @@ name = "eccodeslib"
 version = "2.47.1.20"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "eckitlib" },
+    { name = "eckitlib", marker = "sys_platform != 'win32'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ac/ed/0a9e9b8d42f5c3fa90a46329f9cbdab5e65395aad0b9920f6077d85dc37f/eccodeslib-2.47.1.20-cp314-cp314-macosx_13_0_arm64.whl", hash = "sha256:b039b0d0bec9dfbb31ed963c31ac3e76da6f868d21a4ee703b8f6bd6563c6b35", size = 8904210, upload-time = "2026-05-27T12:26:52.362Z" },
@@ -2085,6 +2085,7 @@ dependencies = [
     { name = "xclim" },
     { name = "xhistogram" },
     { name = "xsdba" },
+    { name = "xvec" },
 ]
 
 [package.dev-dependencies]
@@ -2113,6 +2114,7 @@ requires-dist = [
     { name = "xclim", specifier = ">=0.61.1" },
     { name = "xhistogram", specifier = ">=0.3.2" },
     { name = "xsdba", specifier = ">=0.7.0" },
+    { name = "xvec", specifier = ">=0.5.2" },
 ]
 
 [package.metadata.requires-dev]
@@ -3109,6 +3111,19 @@ wheels = [
 ]
 
 [[package]]
+name = "xproj"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyproj" },
+    { name = "xarray" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/48/33/8c2bcceedfa13122916b6a582eedf9581682dbee329d95bcfb4c69542ade/xproj-0.2.1.tar.gz", hash = "sha256:d520c7a0df402f6a5922108ed614c8ea0ce6b04bec12c91aceb75fe3c1d3c5c3", size = 31781, upload-time = "2025-07-07T09:05:48.022Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/05/b9/b6a9cf72aef69c3e6db869dcc130e19452a658366dac9377f9cd32a76b80/xproj-0.2.1-py3-none-any.whl", hash = "sha256:d762c540c1bc4abc5955b4034b409b9b2f7733c3e49285f3aeb71f9a2dd6bf34", size = 23837, upload-time = "2025-07-07T09:05:46.889Z" },
+]
+
+[[package]]
 name = "xsdba"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3135,6 +3150,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/3b/c0/e5ef3d69c24b19d958d48730326aaf651c5070844e34a8860083eb6dd4fb/xsdba-0.7.0.tar.gz", hash = "sha256:9fa47be804b4a478c761517504a99499c1d0fedfb231846d7843b24f04e28b5f", size = 240270, upload-time = "2026-06-16T17:32:18.663Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3d/10/a1f1760dfc5e80bb68e0156c3a57ce1f07787ed660ed977cf5c0c48e3a14/xsdba-0.7.0-py3-none-any.whl", hash = "sha256:89a9aad5db4240346b412ee725a3ba96f0c856f7e8999cabfac9d32d8d76671f", size = 136932, upload-time = "2026-06-16T17:32:17.264Z" },
+]
+
+[[package]]
+name = "xvec"
+version = "0.5.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cf-xarray" },
+    { name = "pyproj" },
+    { name = "shapely" },
+    { name = "xarray" },
+    { name = "xproj" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/38/d45c4bf760f3c46621631b48ae0af7583747022051bc318a51cb87a9ea75/xvec-0.5.2.tar.gz", hash = "sha256:f62334066fa0a85a51732361170bb050ae9106ffababb6afbb2301a3f7ee9a04", size = 2520054, upload-time = "2025-11-22T21:08:11.993Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/b4/b3161f856c704938d69c10680abaaf4a24783fa58a9f95590f2a0b63dd09/xvec-0.5.2-py3-none-any.whl", hash = "sha256:757243b9ad8d66922111b16f51d157560cf11916fe790a20b9e955a44efb8e8d", size = 784751, upload-time = "2025-11-22T21:08:10.188Z" },
 ]
 
 [[package]]

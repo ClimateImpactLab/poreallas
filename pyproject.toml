@@ -24,6 +24,7 @@ dependencies = [
     "xclim>=0.61.1",
     "xhistogram>=0.3.2",
     "xsdba>=0.7.0",
+    "xvec>=0.5.2",
 ]
 
 [build-system]
