@@ -7,10 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-10-27
+
 ### Changed
 
+- Significant analysis notebook and utils module cleanup. Updates to standard error and "global" calculations. ([@ezuetell](https://github.com/ezuetell), [PR#71](https://github.com/ClimateImpactLab/poreallas/pull/71))
+
+- Update scripts and analysis for preliminary October forecast projection. ([@brews](https://github.com/brews), [PR#69](https://github.com/ClimateImpactLab/poreallas/pull/69))
+
 - Run using 100 gamma samples by default, adding chunks to scripts/05-project_effects.py to handle larger gamma samples. ([@ezuetell](https://github.com/ezuetell), [@brews](https://github.com/brews), [PR#68](https://github.com/ClimateImpactLab/poreallas/pull/68), [PR#70](https://github.com/ClimateImpactLab/poreallas/pull/70))
+
 - Improvements to functionality, structure, and validation. May cause some backwards compatibility issues with existing analysis notebooks. ([@ezuetell](https://github.com/ezuetell), [PR#67](https://github.com/ClimateImpactLab/poreallas/pull/67))
+
 - Format update to keep the ruff >= v0.16.0 overlords happy. ([@brews](https://github.com/brews), [PR#65](https://github.com/ClimateImpactLab/poreallas/pull/65))
 
 ## [0.7.0] - 2026-09-09
@@ -97,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial running prototype.
 
-[Unreleased]: https://github.com/climateimpactlab/poreallas/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/climateimpactlab/poreallas/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/climateimpactlab/poreallas/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/climateimpactlab/poreallas/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/climateimpactlab/poreallas/compare/v0.5.2...v0.6.0
 [0.5.2]: https://github.com/climateimpactlab/poreallas/compare/v0.5.1...v0.5.2
