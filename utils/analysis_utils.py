@@ -14,6 +14,7 @@ import regionmask
 import xarray as xr
 from cil_regionalization.config import SourceUnitPolicies
 from scipy import stats
+import gc
 
 
 @dataclass
@@ -357,42 +358,56 @@ def merge_polygon_stats(stats_ds, polygon, merge_key="region"):
 
 
 ### Regionalization Functions ###
-def redistribute_adm1(impact, config, chunk_size=4):
+def _adm1_frame_to_da(adm1, config):
+    """Convert one chunk's long-format apply_weights output into a dense DataArray."""
+    adm1["GID_1"] = adm1["GID_1"].astype(str)
+    # National-level ADM1 (missing GID_1): fill with GID_0
+    mask = adm1["GID_1"] == ""
+    adm1.loc[mask, "GID_1"] = adm1.loc[mask, "GID_0"]
 
+    index_cols = ["GID_1"] + list(config.dims)
+    if "month" in adm1.columns:
+        index_cols.append("month")
+
+    # GID_0 lookup kept as a coord (avoids a GID_0 x GID_1 product)
+    gid0 = adm1.drop_duplicates("GID_1").set_index("GID_1")["GID_0"]
+    da = adm1.set_index(index_cols)["value"].to_xarray()
+    return da.assign_coords(
+        GID_0=("GID_1", gid0.reindex(da["GID_1"].values).to_numpy(dtype=object))
+    )
+
+
+def redistribute_adm1(impact, config, chunk_size=5, dtype="float32"):
     value_name = impact.name or "value"
-    # List of impact regions
     col_regions = {(h,) for h in impact["region"].values}
 
-    # Total Deaths: "per_source", "kind = extensive"
-    # Death Rates: "per_destination", "kind = intensive"
+    # Total deaths: per_source / extensive; death rates: per_destination / intensive
     kind = "intensive" if config.rate else "extensive"
-    # Get weights from pre-defined files
     weights = cilreg.fetch_weights(
         "gadm41-adm1-per-destination" if config.rate else "gadm41-adm1-per-source"
     )
-    # store chunked results
+
+    has_number = "number" in impact.dims
+    n = impact.sizes["number"] if has_number else 1
     results = []
-    # Check for ensemble members
-    numbers = impact["number"].values if "number" in impact.dims else [None]
-    # Process for each ensemble member chunk to manage memory (Other option could be dask-pandas)
-    for start in range(0, len(numbers), chunk_size):
-        chunk = (
-            impact.isel(number=slice(start, start + chunk_size))
-            if "number" in impact.dims
-            else impact
+
+    for start in range(0, n, chunk_size):
+        chunk = impact.isel(number=slice(start, start + chunk_size)) if has_number else impact
+
+        # Plain DataFrame: geometry isn't used by apply_weights (weights are precomputed)
+        df_chunk = (
+            chunk.rename(value_name)
+            .to_dataframe()
+            .reset_index()
+            .rename(columns={"region": "hierid", value_name: "value"})
         )
-        # xarray to dataframe
-        df_chunk = xarray_to_gpd(chunk, config.polygons)
-        # Align region names with weights file
-        df_chunk = df_chunk.rename(columns={"region": "hierid", value_name: "value"})
-        # keep only region, value, and dim columns
         keep_cols = ["hierid", "value"] + list(config.dims)
         if "month" in df_chunk.columns:
             keep_cols.append("month")
         df_chunk = df_chunk[keep_cols]
-        # Apply weights from cilreg
+
         out = cilreg.apply_weights(
-            weights,  # pre-computed from input file
+            weights,
             df_chunk,
             kind=kind,
             weight="pop",
@@ -402,32 +417,25 @@ def redistribute_adm1(impact, config, chunk_size=4):
             allow_partial_coverage=True,
             policies=SourceUnitPolicies(
                 on_unmatched="skip",
-                on_zero_weight="skip",  # handle zero pop
-                on_absent_from_data="skip",  # handel Antarctica ISO
+                on_zero_weight="skip",       # zero pop
+                on_absent_from_data="skip",  # Antarctica ISO
             ),
         ).frame
-        results.append(out)
-        del df_chunk, out  # free memory before next iteration
 
-    adm1 = pd.concat(results, ignore_index=True)
-    adm1["GID_1"] = adm1["GID_1"].astype(str)
-    # Manage National-level ADM1 (Typically missing an GID_1, fill with GID_0)
-    mask = adm1["GID_1"] == ""
-    adm1.loc[mask, "GID_1"] = adm1.loc[mask, "GID_0"]
+        # Retain only the dense array; the long-format frames are released here
+        da_chunk = _adm1_frame_to_da(out, config)
+        if dtype is not None:
+            da_chunk = da_chunk.astype(dtype)
+        results.append(da_chunk)
 
-    index_cols = ["GID_1"] + list(config.dims)
-    if "month" in adm1.columns:
-        index_cols.append("month")
-    # Add back GID_0 lookup for alignment (if it gets left in the dataframe you get GID_0xGID_1)
-    gid0_lookup = adm1.drop_duplicates("GID_1").set_index("GID_1")["GID_0"]
+        del chunk, df_chunk, out, da_chunk
+        gc.collect()
 
-    # Transform dataframe back to xarray
-    da = adm1.set_index(index_cols)["value"].to_xarray()
-    da = da.assign_coords(
-        GID_0=("GID_1", gid0_lookup.reindex(da["GID_1"].values).to_numpy(dtype=object))
+    if len(results) == 1:
+        return results[0]
+    return xr.concat(
+        results, dim="number", coords="minimal", compat="override", join="outer"
     )
-
-    return da
 
 
 def aggregate_by_iso(ds, polygon, operation="sum"):
