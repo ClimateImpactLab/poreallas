@@ -2,6 +2,7 @@
 # ### Emily Zuetell
 ### July 7, 2026
 
+import gc
 from dataclasses import dataclass
 from functools import cache
 
@@ -14,7 +15,6 @@ import regionmask
 import xarray as xr
 from cil_regionalization.config import SourceUnitPolicies
 from scipy import stats
-import gc
 
 
 @dataclass
@@ -392,7 +392,11 @@ def redistribute_adm1(impact, config, chunk_size=5, dtype="float32"):
     results = []
 
     for start in range(0, n, chunk_size):
-        chunk = impact.isel(number=slice(start, start + chunk_size)) if has_number else impact
+        chunk = (
+            impact.isel(number=slice(start, start + chunk_size))
+            if has_number
+            else impact
+        )
 
         # Plain DataFrame: geometry isn't used by apply_weights (weights are precomputed)
         df_chunk = (
@@ -417,7 +421,7 @@ def redistribute_adm1(impact, config, chunk_size=5, dtype="float32"):
             allow_partial_coverage=True,
             policies=SourceUnitPolicies(
                 on_unmatched="skip",
-                on_zero_weight="skip",       # zero pop
+                on_zero_weight="skip",  # zero pop
                 on_absent_from_data="skip",  # Antarctica ISO
             ),
         ).frame
