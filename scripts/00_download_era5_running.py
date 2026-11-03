@@ -5,7 +5,18 @@
 import cdsapi
 
 YEAR = "2026"
-MONTHS = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10"] # November run, fetch up to October (10)
+MONTHS = [
+    "01",
+    "02",
+    "03",
+    "04",
+    "05",
+    "06",
+    "07",
+    "08",
+    "09",
+    "10",
+]  # November run, fetch up to October (10)
 DAYS = [
     "01",
     "02",
