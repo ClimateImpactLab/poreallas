@@ -48,7 +48,7 @@ dotenv = [".env"]
 
 [tool.ty.src]
 include = ["src", "tests", "scripts"]
-exclude = ["**/*.ipynb"]
+exclude = ["**/*.ipynb", "src/poreallas/utils"]
 
 [tool.uv.sources]
 cil-regionalization = { git = "https://github.com/ClimateImpactLab/cil_regionalization.git" }
