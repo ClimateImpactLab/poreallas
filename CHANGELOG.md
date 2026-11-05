@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Extension of projection analysis to create running mortality totals, with tools for quick validation. ([@ezuetell](https://github.com/ezuetell), [PR#46](https://github.com/ClimateImpactLab/poreallas/pull/46), [PR#73](https://github.com/ClimateImpactLab/poreallas/pull/73))
 
+### Changed
+
+- Fix sensitive utils imports in notebooks by packaging the utils/ module. ([@brews](https://github.com/brews), [PR#74](https://github.com/ClimateImpactLab/poreallas/pull/74))
+
 ## [0.8.0] - 2026-10-27
 
 ### Changed

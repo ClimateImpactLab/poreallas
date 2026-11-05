@@ -5,7 +5,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 
-from utils.analysis_utils import _get_land
+from poreallas.utils.analysis import _get_land
 
 DIVERGING_CMAPS = {
     "bwr",
