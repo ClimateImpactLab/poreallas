@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 from scipy import stats
 
-from src.poreallas.utils.analysis import crossed_ttest, land_only
+from poreallas.utils.analysis import crossed_ttest, land_only
 
 
 def compute_agreement_mask(anom, threshold=0.8, member_dim="number"):
