@@ -58,24 +58,10 @@ request = {
     "year": YEAR,
     "month": MONTHS,
     "day": DAYS,
-    "daily_statistic": "daily_maximum",
+    "daily_statistic": "daily_mean",
     "time_zone": "utc+00:00",
-    "frequency": "6_hourly",
+    "frequency": "1_hourly",
 }
 
 client = cdsapi.Client()
-client.retrieve(dataset, request, "./data/raw/26_era5_daily_max.nc")
-
-request = {
-    "product_type": "reanalysis",
-    "variable": ["2m_temperature"],
-    "year": YEAR,
-    "month": MONTHS,
-    "day": DAYS,
-    "daily_statistic": "daily_minimum",
-    "time_zone": "utc+00:00",
-    "frequency": "6_hourly",
-}
-
-client = cdsapi.Client()
-client.retrieve(dataset, request, "./data/raw/26_era5_daily_min.nc")
+client.retrieve(dataset, request, "./data/raw/26_era5_daily_mean.nc")
