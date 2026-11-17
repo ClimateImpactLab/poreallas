@@ -9,11 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Extension of projection analysis to create running mortality totals, with tools for quick validation. ([@ezuetell](https://github.com/ezuetell), [PR#46](https://github.com/ClimateImpactLab/poreallas/pull/46), [PR#73](https://github.com/ClimateImpactLab/poreallas/pull/73))
+- Extension of projection analysis to create running mortality totals, with tools for quick validation. ([@ezuetell](https://github.com/ezuetell), [PR#46](https://github.com/ClimateImpactLab/poreallas/pull/46), [PR#73](https://github.com/ClimateImpactLab/poreallas/pull/73), [PR#79](https://github.com/ClimateImpactLab/poreallas/pull/79), [PR#80](https://github.com/ClimateImpactLab/poreallas/pull/80))
 
 ### Changed
 
-- Fix sensitive utils imports in notebooks by packaging the utils/ module. ([@brews](https://github.com/brews), [PR#74](https://github.com/ClimateImpactLab/poreallas/pull/74))
+- Update scripts to use new November ECMWF forecasts by default. ([@brews](https://github.com/brews), [PR#79](https://github.com/ClimateImpactLab/poreallas/pull/79))
+- Package the utils/ modules to fix sensitive utils imports in notebooks. ([@brews](https://github.com/brews), [PR#74](https://github.com/ClimateImpactLab/poreallas/pull/74))
 
 ## [0.8.0] - 2026-10-27
 
